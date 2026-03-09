@@ -17,7 +17,7 @@ def parse_section(text: str) -> dict:
             sections[current_section] += line.strip() + "\n"
     return sections
 
-def parse_subsectiontions(section_text: str) -> list:
+def parse_subsections(section_text: str) -> list:
     subsections = []
     current = None
     lines = section_text.split("\n")
@@ -48,7 +48,7 @@ def parse_subsectiontions(section_text: str) -> list:
 if __name__ == "__main__":
     text = load_resume("samples/resume.txt")
     sections = parse_section(text)
-    subsections = parse_subsectiontions(sections["PROJECTS"])
+    subsections = parse_subsections(sections["PROJECTS"])
     for sub in subsections:
         print(sub["title"])
         for bullet in sub["bullets"]:

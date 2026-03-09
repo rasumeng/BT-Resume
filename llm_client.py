@@ -1,24 +1,34 @@
 import requests
+import os
 from prompts import bullet_polish_prompt, job_tailor_prompt
 from prompts import experience_updater_prompt
 
 def ask_llm(prompt):
     url = "http://localhost:11434/api/generate"
+    model = os.getenv("OLLAMA_MODEL", "mistral:7b")
 
     payload = {
-    "model": "mistral",
+    "model": model,
     "prompt": prompt,
     "stream": False,
-    "options": {"num_predict": 512,
+    "options": {"num_predict": 1024,
                 "temperature": 0.4
                 },
     }
 
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=120)
         response.raise_for_status() # raise error if request faield
         data = response.json()
         return data.get("response", "")
+    except requests.exceptions.HTTPError:
+        detail = ""
+        try:
+            detail = response.json().get("error", "")
+        except Exception:
+            pass
+        print(f"Error from Ollama ({response.status_code}): {detail or response.text}")
+        return None
     except requests.exceptions.RequestException as e:
         print("Error connecting to Ollama:", e)
         return None
