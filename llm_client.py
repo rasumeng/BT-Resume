@@ -1,11 +1,10 @@
 import requests
 import os
-from prompts import bullet_polish_prompt, job_tailor_prompt
-from prompts import experience_updater_prompt
 
-def ask_llm(prompt):
+
+def ask_llm(prompt, model=None):
     url = "http://localhost:11434/api/generate"
-    model = os.getenv("OLLAMA_MODEL", "mistral:7b")
+    model= model or  os.getenv("OLLAMA_MODEL", "mistral:7b")
 
     payload = {
     "model": model,
@@ -33,7 +32,9 @@ def ask_llm(prompt):
         print("Error connecting to Ollama:", e)
         return None
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
+    from prompts import bullet_polish_prompt, job_tailor_prompt
+    from prompts import experience_updater_prompt
     bullet = "Responsible for helping customers"
     prompt = bullet_polish_prompt(bullet)
     result = ask_llm(prompt)

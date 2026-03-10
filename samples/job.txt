@@ -1,0 +1,43 @@
+Job description
+What is iManage U?
+
+iManage U provides students the chance to experience a dynamic, rapid growth technology company firsthand. iManage will provide a structured program which delivers project-based activities, improved knowledge of business fundamentals, tackling complex problem solving, collaboration, team building, and some fun experiences along the way!  This year, our paid internship program will kick-off on Monday, June 8th and will run through Thursday, August 13th.  
+
+This internship will be based out of our downtown Chicago office, with activities requiring in-person presence.
+
+Goals of the Program:
+
+iM Making An Impact: Leave your mark on your team by owning and completing assigned projects
+iM A Mentee: Learn from teammates across departments & gain perspectives from a diversity of people
+iM A Connector: Meet & connect with as many interns and iManage employees as possible
+iM Inspired: Learn from our leadership team and ask questions during our lunch and learns
+iM Social: Enjoy intern events, and everything iManage has to offer this summer
+Being a Machine Learning Intern at iManage Means…
+
+You bring a passion for designing, developing, and deploying cutting-edge machine learning models and systems.  You will be working across our teams in Data Science, Enterprise Data Engineering, etc., to turn our data insights into production-ready solutions to further advance our predictive automation capabilities.
+
+iM Responsible For…
+
+Designing, developing and deploying machine learning algorithms and deep learning applications and systems to address our business objectives
+Experimenting with different machine learning algorithms and techniques to improve model accuracy and performance, as well as documenting your findings and results
+Training, retraining, and monitoring machine learning systems and models as needed
+Constructing optimized data pipelines from our Enterprise Data Lake to feed machine learning models
+Solving complex problems with multi-layered data sets, and  optimizing for performance and scalability
+Collaborating with Data Scientists, Data Engineers, Data Architects as well as other stakeholders on the creation and maintenance of production data models and data visualizations
+Identifying differences in data distribution that could potentially affect model performance in real-world applications
+iM Qualified Because I…
+
+Am working towards a Master’s Degree or PhD in Machine Learning, Data Science, Computer Science or related field
+Have proficiency in Python, R, Java, C++ or other relevant languages
+Have experience with machine learning frameworks such as TensorFlow, PyTorch, Scikit-learn, etc.
+Have proficiency working with medium or large data sets and data processing tools (Hadoop, Spark, SQL)
+Have a strong knowledge of supervised and unsupervised learning, deep learning, natural language processing (NLP), reinforcement learning and other key machine learning technique
+Have strong communication and presentation skills with the ability to articulate complex concepts to diverse audiences
+Don't meet every qualification listed above? Studies show that women and people of color are less likely to apply to jobs unless they meet all qualifications. At iManage, we are committed to building a diverse and inclusive environment, and encourage everyone to show up as their full authentic selves. We welcome those that come with a growth mindset and a hunger for learning; so, if you are excited about this role but your past experience doesn't align perfectly with every qualification we encourage you to apply anyways!  
+
+About iManage
+
+iManage is dedicated to Making Knowledge WorkTM.  Over one million professionals across 65+ countries rely on our intelligent, cloud-enabled, secure knowledge work platform to uncover and activate the knowledge that exists inside their business content and communications.   
+We are continuously innovating to solve the most complex professional challenges and enable better business outcomes; Our work is not always easy but it is ambitious and rewarding.  
+
+So we’re looking for people who love a challenge. People who are happiest when they’re solving problems and collaborating with the industry’s best and brightest. That’s the iManage way. It’s how we do things that might appear impossible. How we develop our employees’ strengths and unlock their potential. How we find meaning in everything we do.  
