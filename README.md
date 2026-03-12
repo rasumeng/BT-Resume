@@ -1,4 +1,4 @@
-# BTF Resume
+# BT Resume
 
 A free, local AI resume helper that polishes your resume bullets, tailors your resume to job descriptions, and formats new experience — all running privately on your own machine. No API keys, no subscriptions, no data leaving your device.
 ---
