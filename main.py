@@ -1,7 +1,7 @@
 import argparse
-from input_parser import load_text, load_pdf, parse_section
-from output_builder import build_resume
-from pdf_generator import generate_pdf
+from core.input_parser import load_text, load_pdf, parse_section
+from core.output_builder import build_resume
+from core.pdf_generator import generate_pdf
 
 
 
@@ -35,9 +35,9 @@ def main():
     sections = parse_section(text)
 
     if experience:
-        from prompts import experience_updater_prompt
-        from llm_client import ask_llm
-        from output_builder import clean_bullets
+        from core.prompts import experience_updater_prompt
+        from core.llm_client import ask_llm
+        from core.output_builder import clean_bullets
         
         user_input = input("Describe your experience: ")
         section = input("Which section? (WORK EXPERIENCE / PROJECTS / LEADERSHIP): ").upper()

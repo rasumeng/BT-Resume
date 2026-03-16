@@ -1,4 +1,14 @@
-def bullet_polish_prompt(bullet: str) -> str:
+def bullet_polish_prompt(bullet: str, mode: str = "medium") -> str:
+    mode = (mode or "medium").strip().lower()
+    if mode not in {"light", "medium", "aggressive"}:
+        mode = "medium"
+
+    mode_guidance = {
+        "light": "Make only minimal edits unless clarity is poor. Keep wording close to the original.",
+        "medium": "Improve phrasing and impact noticeably while preserving original meaning and technologies.",
+        "aggressive": "Rewrite assertively for impact and concision; avoid copying original phrasing when a stronger form exists.",
+    }[mode]
+
     return f"""
 You are an elite resume writer specializing in ATS-optimized technical resumes.
 
@@ -6,12 +16,13 @@ Rewrite the resume bullet below to be concise, achievement-oriented, and optimiz
 
 Requirements:
 - Maximum length: 180 characters.
-- Output must start with "- ".
 - Follow the structure:
   Action Verb + Task + Tools/Skills (if present) + Measurable Impact.
 - Preserve all technologies, programming languages, tools, and frameworks mentioned.
 - Strengthen weak phrasing and remove filler words.
 - Maintain the original meaning while improving clarity and impact.
+- Rewrite intensity: {mode.upper()}.
+- {mode_guidance}
 
 Metrics:
 - Do NOT invent metrics.
@@ -34,16 +45,41 @@ CRITICAL:
 - Only rewrite the bullet provided.
 - Never invent new experience, technologies, or accomplishments.
 - Only use technologies explicitly present in the input.
+- If the bullet is already strong, still tighten wording slightly for precision.
 
 Output Rules:
-- Return exactly ONE bullet.
-- The bullet MUST begin with "- ".
+- Return exactly ONE bullet (without the "- " prefix).
 - No explanations or additional text.
 
 Bullet:
 {bullet}
 
 Polished Bullet:
+""".strip()
+
+
+def get_changes_summary_prompt(original, polished):
+  return f"""
+You are a resume editor reviewing changes made to a resume.
+Compare the original and polished versions and summarize what changed.
+
+Rules:
+- Return a JSON array of change strings, nothing else
+- Maximum 8 changes
+- Each change should be concise (under 80 characters)
+- Focus on meaningful changes: verb upgrades, added keywords, structural improvements
+- Ignore whitespace or formatting differences
+
+Return exactly this format:
+["change 1", "change 2", "change 3"]
+
+Original:
+{original}
+
+Polished:
+{polished}
+
+Changes:
 """.strip()
 
 def job_tailor_prompt(resume_section, job_description):
@@ -63,7 +99,6 @@ Guidelines:
 - Maximum length per bullet: 180 characters.
 - Maintain the SAME number of bullets as the input.
 - Do NOT merge, split, or remove bullets.
-- Every bullet MUST start with "- ".
 - Preserve all technologies, programming languages, and tools.
 - Follow the structure:
 
@@ -92,8 +127,7 @@ Implemented, Delivered, Launched, Reduced, Accelerated,
 Generated, Scaled, Spearheaded.
 
 Output Rules:
-- Return ONLY bullet points.
-- Every line must begin with "- ".
+- Return ONLY bullet points (without the "- " prefix on each line).
 - No explanations, headers, notes, or commentary.
 
 Resume Section:
@@ -145,8 +179,7 @@ Additional Constraints:
 - Prefer specific technical nouns when available.
 
 Output Rules:
-- Return only bullet points.
-- Every bullet must start with "- ".
+- Return only bullet points (without the "- " prefix on each line).
 - No explanations or commentary.
 
 User Experience Description:
@@ -154,3 +187,20 @@ User Experience Description:
 
 Resume Bullets:
 """.strip()
+
+def get_grader_prompt(resume_text):
+    return f"""You are a resume grader. Grade the following resume on these criteria.
+Return ONLY a JSON object with no markdown, no explanation, nothing else.
+
+Criteria (score each 1-10):
+- ats_score: ATS compatibility, clean formatting, no tables or graphics
+- sections_score: completeness of sections (summary, experience, education, skills)
+- bullets_score: bullet point strength, action verbs, quantification
+- keywords_score: relevant keywords and industry terminology
+
+Resume:
+{resume_text}
+
+Return exactly this format:
+{{"ats_score": 0, "sections_score": 0, "bullets_score": 0, "keywords_score": 0}}"""
+

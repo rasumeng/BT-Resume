@@ -1,4 +1,5 @@
-﻿asumengrobert787@gmail.com | 469-594-2623 | www.linkedin.com/in/robertasumeng/ | github.com/rasumeng 
+﻿Robert Asumeng
+asumengrobert787@gmail.com | 469-594-2623 | www.linkedin.com/in/robertasumeng/ | github.com/rasumeng 
 SUMMARY
 Computer Science student (BS, GPA: 3.8/4.0) skilled in AI/ML systems engineering, data pipelines, and production-grade concurrency. Experienced in LLM prompt pipelines, heuristic search algorithms (A*/BFS/DFS), and thread-safe simulators, achieving measurable improvements in predictive accuracy and system reliability. Proven ability to design scalable solutions that optimize performance and automate workflows.
 EDUCATION
