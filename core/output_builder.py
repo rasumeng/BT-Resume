@@ -1,4 +1,5 @@
 import os
+import re
 
 from core.input_parser import load_pdf, parse_section, parse_subsections
 from core.prompts import bullet_polish_prompt, job_tailor_prompt
@@ -10,17 +11,22 @@ SECTIONS_TO_POLISH = ["WORK EXPERIENCE", "PROJECTS", "LEADERSHIP", "SKILLS"]
 def build_resume(sections: dict, job_description) -> dict:
     improved_sections = {}
     for section, content in sections.items():
+        # Skip non-string values like dicts (e.g., _CONTACT)
+        if not isinstance(content, str):
+            improved_sections[section] = content
+            continue
         if section in SECTIONS_TO_POLISH:
-            improved_sections[section] = polish_section(content, job_description)
+            improved_sections[section] = polish_section(content, job_description, section)
         else:
             improved_sections[section] = content
     return improved_sections    
 
-def polish_section(section_text: str, job_description) -> str:
-    subsections = parse_subsections(section_text)
+def polish_section(section_text: str, job_description, section_name: str = "") -> str:
+    subsections = parse_subsections(section_text, section_name)
     polish_mode = os.getenv("BULLET_POLISH_MODE", "medium").lower()
     result = ""
-    for sub in subsections:
+    
+    for idx, sub in enumerate(subsections):
         titles = sub["title"]
         bullets = sub["bullets"]
         if not bullets:
@@ -43,8 +49,14 @@ def polish_section(section_text: str, job_description) -> str:
                 polished_one = ask_llm(prompt)
                 cleaned_one = clean_bullets(polished_one)
                 if cleaned_one:
-                    # Keep a single polished bullet per input bullet.
-                    polished_lines.append(cleaned_one.split("\n")[0])
+                    # Take only the first bullet line — never accept merged multi-sentence output
+                    first_line = cleaned_one.split("\n")[0].strip()
+                    # Sanity check: if the model returned something way too long it likely
+                    # merged bullets. Fall back to the original in that case.
+                    if len(first_line) <= 300:
+                        polished_lines.append(first_line)
+                    else:
+                        polished_lines.append(f"- {bullet}")
                 else:
                     polished_lines.append(f"- {bullet}")
             polished = "\n".join(polished_lines)
@@ -69,13 +81,16 @@ def clean_bullets(text: str) -> str:
         # Skip commentary lines first
         if any(line.lower().startswith(phrase) for phrase in skip_phrases):
             continue
+        # Strip bracket-only artifact lines like "[N/A for measurable result]"
+        if re.match(r"^\[.*\]$", line):
+            continue
         # Remove leading numbers like "1." "2." etc
         if line[0].isdigit() and len(line) > 1 and line[1] in ".):":
             line = "- " + line[2:].strip()
-        # Ensure bullet formatting
-        if not line.startswith("-"):
-            line = "- " + line
-        cleaned.append(line)
+        # Normalize bullet prefix: strip any combo of -, *, •, ● then re-add "- "
+        line = re.sub(r"^[-*•●·]+\s*", "", line).strip()
+        if line:
+            cleaned.append(f"- {line}")
     return "\n".join(cleaned)
 
 

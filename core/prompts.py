@@ -1,61 +1,40 @@
 def bullet_polish_prompt(bullet: str, mode: str = "medium") -> str:
-    mode = (mode or "medium").strip().lower()
-    if mode not in {"light", "medium", "aggressive"}:
-        mode = "medium"
+    mode_instructions = {
+        "light": (
+            "Make minimal changes. Only fix weak or vague verbs and tighten wording. "
+            "Preserve the original structure and content as closely as possible."
+        ),
+        "medium": (
+            "Improve clarity, verb precision, and impact. You may restructure the bullet "
+            "if it improves readability, but do not change the substance of what was done."
+        ),
+        "aggressive": (
+            "Fully rewrite for maximum impact. Restructure freely, sharpen the verb, "
+            "and make the accomplishment as compelling as possible without inventing experience."
+        ),
+    }
 
-    mode_guidance = {
-        "light": "Make only minimal edits unless clarity is poor. Keep wording close to the original.",
-        "medium": "Improve phrasing and impact noticeably while preserving original meaning and technologies.",
-        "aggressive": "Rewrite assertively for impact and concision; avoid copying original phrasing when a stronger form exists.",
-    }[mode]
+    return f"""You are a professional resume editor. Rewrite the following resume bullet point.
 
-    return f"""
-You are an elite resume writer specializing in ATS-optimized technical resumes.
-
-Rewrite the resume bullet below to be concise, achievement-oriented, and optimized for both ATS systems and human recruiters.
-
-Requirements:
-- Maximum length: 180 characters.
-- Follow the structure:
-  Action Verb + Task + Tools/Skills (if present) + Measurable Impact.
-- Preserve all technologies, programming languages, tools, and frameworks mentioned.
-- Strengthen weak phrasing and remove filler words.
-- Maintain the original meaning while improving clarity and impact.
-- Rewrite intensity: {mode.upper()}.
-- {mode_guidance}
-
-Metrics:
-- Do NOT invent metrics.
-- If a metric is implied but not provided, insert placeholders such as:
-  [X%], [N users], [X+ datasets], [X systems].
-
-Avoid weak verbs:
-helped, assisted, worked on, responsible for, participated in.
-
-Prefer strong verbs:
-Engineered, Built, Developed, Automated, Optimized, Delivered,
-Designed, Implemented, Scaled, Launched, Spearheaded,
-Reduced, Accelerated, Generated, Led.
-
-Additional Constraints:
-- Avoid vague phrases like "various tasks", "multiple projects", or "different systems".
-- Prefer specific technical nouns when possible.
-
-CRITICAL:
-- Only rewrite the bullet provided.
-- Never invent new experience, technologies, or accomplishments.
-- Only use technologies explicitly present in the input.
-- If the bullet is already strong, still tighten wording slightly for precision.
-
-Output Rules:
-- Return exactly ONE bullet (without the "- " prefix).
-- No explanations or additional text.
-
-Bullet:
+BULLET:
 {bullet}
 
-Polished Bullet:
-""".strip()
+REWRITE RULES:
+1. Begin with a precise action verb that reflects the specific nature of the work in this bullet.
+   - Choose the verb based on what was actually done, not from a fixed list.
+   - If the original verb is already specific and accurate, keep it.
+   - Only replace verbs that are weak, vague, or generic (e.g. "helped", "worked on", "assisted", "did", "was responsible for").
+2. Follow the structure: [Action Verb] + [What was done] + [Tools/Technologies used] + [Outcome or impact].
+3. Preserve every technology, tool, and language mentioned in the original — do not drop any.
+4. If a measurable result is present, keep it. If one is strongly implied and you can represent it with a natural placeholder like [X%] or [N users], you may add it. If no metric fits naturally, omit it entirely. NEVER write [N/A], [none], or any explanatory bracket text.
+5. Do NOT add skills, tools, or experience that are not in the original bullet.
+6. Maximum 180 characters.
+7. Do NOT include a leading "- " prefix.
+8. Return only the rewritten bullet. No explanation, no commentary, no alternatives.
+
+INTENSITY: {mode_instructions[mode]}
+
+REWRITTEN BULLET:"""
 
 
 def get_changes_summary_prompt(original, polished):
@@ -82,125 +61,61 @@ Polished:
 Changes:
 """.strip()
 
-def job_tailor_prompt(resume_section, job_description):
-    return f"""
-You are an expert resume writer and ATS optimization specialist.
+def job_tailor_prompt(resume_section: str, job_description: str) -> str:
+    return f"""You are a professional resume editor. Rewrite the following resume bullets to better align with the job description.
 
-Rewrite the resume section so it aligns with the job description while preserving the candidate's original experience.
-
-Objectives:
-1. Mirror important keywords from the job description.
-2. Prioritize technical skills, tools, programming languages, frameworks, and methodologies.
-3. Preserve the original accomplishments and meaning.
-4. Improve clarity, impact, and recruiter readability.
-5. Maintain ATS compatibility.
-
-Guidelines:
-- Maximum length per bullet: 180 characters.
-- Maintain the SAME number of bullets as the input.
-- Do NOT merge, split, or remove bullets.
-- Preserve all technologies, programming languages, and tools.
-- Follow the structure:
-
-  Action Verb + Task + Tools/Technologies + Measurable Impact
-
-Metrics:
-- Do NOT invent specific metrics.
-- If metrics are missing, use placeholders such as:
-  [X%], [N users], [X+ datasets], [X systems].
-
-Keyword Alignment:
-- Use the job description ONLY to mirror keywords and phrasing.
-- Prioritize technical terms over generic wording.
-
-Strict Restrictions:
-- Never copy responsibilities directly from the job description.
-- Never add skills, tools, or technologies not present in the original resume section.
-- Every bullet must remain grounded in the candidate's experience.
-
-Avoid weak verbs:
-helped, assisted, worked on, responsible for.
-
-Prefer strong verbs:
-Engineered, Developed, Built, Automated, Optimized,
-Implemented, Delivered, Launched, Reduced, Accelerated,
-Generated, Scaled, Spearheaded.
-
-Output Rules:
-- Return ONLY bullet points (without the "- " prefix on each line).
-- No explanations, headers, notes, or commentary.
-
-Resume Section:
+RESUME BULLETS:
 {resume_section}
 
-Job Description:
+JOB DESCRIPTION:
 {job_description}
 
-Tailored Resume Section:
-""".strip()
+RULES:
+1. Return exactly the same number of bullets as provided — no more, no fewer.
+2. Each bullet must begin with a precise action verb that reflects what was actually done in that bullet.
+   - If the original verb is already accurate and strong, keep it.
+   - Only replace verbs that are weak or generic.
+   - Do not reuse the same verb across multiple bullets.
+3. Incorporate relevant keywords and terminology from the job description naturally — do not force them in awkwardly.
+4. Preserve the original accomplishments exactly. Do not swap in responsibilities copied from the job posting.
+5. Do NOT add any skills, tools, or technologies that are not present in the original bullets.
+6. Maximum 180 characters per bullet.
+7. Do NOT include a leading "- " prefix.
+8. Return only the rewritten bullets, one per line. No explanation or commentary.
+
+REWRITTEN BULLETS:"""
 
 def experience_updater_prompt(user_input: str) -> str:
-    return f"""
-You are a professional resume writer specializing in technical and business resumes.
+    return f"""You are a professional resume writer. Convert the following experience description into 2-4 resume bullet points.
 
-The user will describe their experience in casual language.
-Convert the description into strong, achievement-oriented resume bullets.
-
-Instructions:
-- Extract 2–4 distinct accomplishments, responsibilities, or projects.
-- Write one bullet per accomplishment.
-- Maximum length per bullet: 180 characters.
-- Each bullet must begin with "- ".
-- Preserve technologies, programming languages, tools, and platforms mentioned.
-- Focus on outcomes and measurable impact.
-
-Bullet Structure:
-Action Verb + Task + Tools/Skills (if mentioned) + Result/Impact.
-
-Metrics:
-- Include metrics if present.
-- If metrics are missing, insert placeholders such as:
-  [X%], [N users], [X+ datasets], [X processes], [X hours saved].
-
-Avoid vague bullets:
-Each bullet must clearly describe what was built, analyzed, designed, implemented, or optimized.
-
-Avoid weak verbs:
-helped, assisted, worked on, responsible for.
-
-Prefer strong verbs:
-Engineered, Developed, Automated, Built, Optimized,
-Implemented, Designed, Launched, Reduced, Accelerated,
-Generated, Delivered, Led.
-
-Additional Constraints:
-- Avoid repeating the same action verb across bullets.
-- Avoid generic phrases like "various tasks" or "multiple systems".
-- Prefer specific technical nouns when available.
-
-Output Rules:
-- Return only bullet points (without the "- " prefix on each line).
-- No explanations or commentary.
-
-User Experience Description:
+EXPERIENCE DESCRIPTION:
 {user_input}
 
-Resume Bullets:
-""".strip()
+RULES:
+1. Extract 2-4 distinct accomplishments or responsibilities from the description.
+2. Each bullet must begin with a precise action verb that matches what was actually done in that specific task.
+   - Derive the verb from the nature of the work — do not default to the same verb across bullets.
+   - Avoid weak or overused openers like "Developed", "Worked on", "Helped", or "Was responsible for".
+3. Follow the structure: [Action Verb] + [What was done] + [Tools/Technologies] + [Result or impact].
+4. If a metric is stated, include it. If one is implied, use a placeholder like [X%] or [N users].
+5. Maximum 180 characters per bullet.
+6. Each bullet must start with "- ".
+7. Return only the bullets. No explanation, no preamble.
 
-def get_grader_prompt(resume_text):
-    return f"""You are a resume grader. Grade the following resume on these criteria.
-Return ONLY a JSON object with no markdown, no explanation, nothing else.
+BULLETS:"""
+def get_grader_prompt(resume_text: str) -> str:
+    return f"""You are a professional resume reviewer. Grade the following resume across 4 dimensions.
 
-Criteria (score each 1-10):
-- ats_score: ATS compatibility, clean formatting, no tables or graphics
-- sections_score: completeness of sections (summary, experience, education, skills)
-- bullets_score: bullet point strength, action verbs, quantification
-- keywords_score: relevant keywords and industry terminology
-
-Resume:
+RESUME:
 {resume_text}
 
-Return exactly this format:
-{{"ats_score": 0, "sections_score": 0, "bullets_score": 0, "keywords_score": 0}}"""
+Score each dimension from 1 to 10 using these criteria:
+- ats_score: How well the resume would pass Applicant Tracking Systems (keywords, formatting, standard sections)
+- sections_score: Whether the resume has the right sections (Education, Experience, Projects, Skills) and organizes them clearly
+- bullets_score: Quality of bullet points — action verbs, measurable results, specificity, conciseness
+- keywords_score: Presence of relevant technical and industry keywords for the apparent target role
 
+Return ONLY a valid JSON object in exactly this format, with no explanation, no preamble, no markdown:
+{{"ats_score": 0, "sections_score": 0, "bullets_score": 0, "keywords_score": 0}}
+
+SCORES:"""

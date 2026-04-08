@@ -65,24 +65,51 @@ def load_pdf(filepath: str) -> str:
             text = page.extract_text() or ""
             raw_lines.extend(text.split("\n"))
     
-    # Rejoin wrapped lines
+    # Process and rejoin only lines that are clearly split mid-word
     joined = []
-    for line in raw_lines:
+    i = 0
+    while i < len(raw_lines):
+        line = raw_lines[i].rstrip()  # Remove trailing whitespace
         stripped = line.strip()
+        
         if not stripped:
             joined.append("")
+            i += 1
             continue
-        # If line doesn't start with a bullet or look like a header
-        # anad previous line exists, it's a continuation
-        if (joined and
-            not stripped.startswith("●") and 
-            not stripped.startswith("-") and
-            not stripped.startswith("*") and
-            not stripped.isupper() and
-            stripped[0].islower()):
-            joined[-1] = joined[-1] + " " + stripped
-        else:
-            joined.append(stripped)
+        
+        # Only join if current line ends incomplete (mid-word) and next line is a continuation
+        while i + 1 < len(raw_lines):
+            next_line = raw_lines[i + 1].rstrip().strip()
+            
+            if not next_line:
+                i += 1
+                break
+            
+            words = stripped.split()
+            if not words:
+                break
+                
+            last_word = words[-1]
+            
+            # Check if last word looks truncated at character position
+            # Look for common incomplete word endings
+            looks_truncated = (
+                len(last_word) < 8 and not last_word.endswith(('tion', 'ing', 'ed'))
+            ) or last_word.endswith(('d', 'e', 'u', 'a'))  # Cut off at vowel
+            
+            next_starts_lower = next_line and next_line[0].islower()
+            next_is_bullet = next_line and next_line[0] in '●-*'
+            
+            # Only join if it looks like a sentence fragment continuation
+            if looks_truncated and not next_is_bullet and next_starts_lower:
+                stripped = stripped + " " + next_line
+                i += 1
+            else:
+                break
+        
+        joined.append(stripped)
+        i += 1
+    
     return "\n".join(joined)
 
 
@@ -120,7 +147,10 @@ def _looks_like_header(line: str, prev_blank: bool, next_blank: bool) -> bool:
         return False
     if any(ch.isdigit() for ch in stripped):
         return False
-    if len(stripped) > 45:
+    
+    # Increased length limit to allow for longer project titles
+    # (e.g., "Housing Price Prediction — End-to-End ML Pipeline | Python, Pandas, Scikit-learn")
+    if len(stripped) > 100:
         return False
 
     # Avoid classifying the candidate's name as a section header.
@@ -128,7 +158,7 @@ def _looks_like_header(line: str, prev_blank: bool, next_blank: bool) -> bool:
         return False
 
     words = stripped.split()
-    if not (1 <= len(words) <= 5):
+    if not (1 <= len(words) <= 10):  # Increased word count limit
         return False
 
     is_title_case = all((w[:1].isupper() or w.isupper()) for w in words)
@@ -166,6 +196,46 @@ def _split_inline_header(line: str):
             return canonical, remainder
     return None, None
 
+def _extract_contact_info(header_text: str) -> dict:
+    """Extract email, phone, LinkedIn, and GitHub from header text."""
+    contact = {
+        "email": None,
+        "phone": None,
+        "linkedin": None,
+        "github": None,
+    }
+    
+    # Extract email (look for @)
+    email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", header_text)
+    if email_match:
+        contact["email"] = email_match.group(0)
+    
+    # Extract phone (common formats)
+    phone_match = re.search(r"(?:\+\d{1,3}[-.\s]?)?\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})", header_text)
+    if phone_match:
+        contact["phone"] = phone_match.group(0).strip()
+    
+    # Extract LinkedIn URL - with or without protocol
+    linkedin_match = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[\w\-\.]+/?", header_text, re.IGNORECASE)
+    if linkedin_match:
+        url = linkedin_match.group(0).rstrip('/')
+        # Add protocol if missing
+        if not url.startswith("http"):
+            url = "https://" + url
+        contact["linkedin"] = url
+    
+    # Extract GitHub URL - with or without protocol
+    github_match = re.search(r"(?:https?://)?(?:www\.)?github\.com/[\w\-\.]+/?", header_text, re.IGNORECASE)
+    if github_match:
+        url = github_match.group(0).rstrip('/')
+        # Add protocol if missing
+        if not url.startswith("http"):
+            url = "https://" + url
+        contact["github"] = url
+    
+    return contact
+
+
 def parse_section(text: str) -> dict:
     sections = {}
     current_section = None
@@ -196,29 +266,97 @@ def parse_section(text: str) -> dict:
             current_section = "_HEADER"
             sections.setdefault(current_section, "")
         sections[current_section] += stripped + "\n"
+    
+    # Extract and store contact info separately
+    header_text = sections.get("_HEADER", "")
+    contact_info = _extract_contact_info(header_text)
+    sections["_CONTACT"] = contact_info
+    
     return sections
 
-def parse_subsections(section_text: str) -> list:
+def parse_subsections(section_text: str, section_name: str = "") -> list:
     subsections = []
     current = None
     lines = section_text.split("\n")
+    
+    # Only apply aggressive continuation merging for PROJECTS section
+    is_projects = section_name == "PROJECTS"
 
-    for line in lines:
+    # Known section headers — stop accumulating if we hit one
+    KNOWN_HEADERS = {
+        "WORK EXPERIENCE", "EXPERIENCE", "PROJECTS", "LEADERSHIP", "EDUCATION",
+        "SKILLS", "TECHNICAL SKILLS", "SUMMARY", "CERTIFICATIONS", "VOLUNTEERING",
+    }
+
+    def looks_like_location_or_company(line: str) -> bool:
+        """Check if line looks like a company/location line rather than a job title."""
+        # Company locations typically:
+        # - End with a city, state, or "Remote"
+        # - Contain a company name (capitalized)
+        # - Are SHORT (2-4 words) with few action words
+        # - Examples: "Best Buy Cedar Hill, TX", "FAPEMPA LLC Remote", "Microsoft Seattle, WA"
+        words = line.split()
+        if len(words) <= 4:  # Company/location lines are typically short
+            # Check if it ends with a US state or location indicator
+            state_abbrevs = {"TX", "CA", "NY", "FL", "WA", "MA", "IL", "PA", "VA", "NC", "GA", "OH", "MI"}
+            if any(word in state_abbrevs for word in words) or line.endswith("Remote"):
+                return True
+            # Check if it looks like pure company + location (no verbs, few words)
+            if len(words) <= 3 and "," in line:  
+                return True
+        return False
+
+    for i, line in enumerate(lines):
         line = line.strip()
         if not line:
-            #empty line - skip it
+            # empty line - skip it
             pass
+        # Stop if we've hit what looks like the start of a new section
+        elif line.upper().rstrip(":") in KNOWN_HEADERS:
+            break
         # Bullet Branch
-        elif line.startswith("*") or line.startswith("-") or line.startswith("●"):
+        elif line.startswith("*") or line.startswith("-") or line.startswith("●") or line.startswith("•"):
             if current is not None:
-                clean = line.lstrip("*-● ").strip()
-                current["bullets"].append(clean)
+                clean = line.lstrip("*-●•· ").strip()
+                if clean:
+                    current["bullets"].append(clean)
     
-        # Title
+        # Title or continuation
         else:
-            if current is not None:
-                subsections.append(current)
-            current = {"title": line, "bullets": []}
+            # Check if this looks like a title:
+            # - Starts with capital letter AND
+            # - Either has a colon, dash, or is 2-7 words AND
+            # - Doesn't look like a sentence fragment (doesn't end with lowercase continuation)
+            looks_like_title = (
+                line and 
+                line[0].isupper() and 
+                ((':' in line or '—' in line or '–' in line or '|' in line) or (2 <= len(line.split()) <= 7)) and
+                not (line.startswith('and ') or line.startswith('or ') or line.lower().startswith(('achieving', 'driving', 'improving', 'increasing', 'creating', 'building')))
+            )
+            
+            # Check if this is likely a company/location continuation
+            is_company_location = looks_like_location_or_company(line)
+            
+            # If we have a current subsection and current line is not a new title,
+            # add it as part of the title or as a bullet
+            if current is not None and (not looks_like_title or is_company_location):
+                # This is either a continuation of the title (company/location) or a non-bullet line
+                if current["bullets"]:
+                    # We already have bullets, so append to last bullet
+                    current["bullets"][-1] += " " + line
+                else:
+                    # No bullets yet, so append to title (this is company/location info)
+                    current["title"] += " " + line
+            elif is_projects and current is not None and looks_like_title and len(line.split()) <= 3 and current["bullets"]:
+                # For PROJECTS: If this "title" is very short (2-3 words),
+                # it's likely a continuation of the last bullet (from line wrapping in PDF)
+                current["bullets"][-1] += " " + line
+            else:
+                # This is a new title
+                if current is not None:
+                    subsections.append(current)
+                current = {"title": line, "bullets": []}
+    
     # save the last subsection
     if current is not None:
         subsections.append(current)
@@ -229,10 +367,31 @@ def parse_subsections(section_text: str) -> list:
 if __name__ == "__main__":
     text = load_pdf("samples/resume.pdf")
     sections = parse_section(text)
+    
+    print("=== CONTACT INFORMATION ===")
+    contact = sections.get("_CONTACT", {})
+    print(f"Email: {contact.get('email')}")
+    print(f"Phone: {contact.get('phone')}")
+    print(f"LinkedIn: {contact.get('linkedin')}")
+    print(f"GitHub: {contact.get('github')}")
+    print()
+
+    print("=== WORK EXPERIENCE SECTION ===")
     if "WORK EXPERIENCE" in sections:
-        subsections = parse_subsections(sections["WORK EXPERIENCE"])
-        for sub in subsections:
-            print("TITLE:", sub["title"])
-            for b in sub["bullets"]:
-                print("  BULLET:", b)
-            print()
+        subsections = parse_subsections(sections["WORK EXPERIENCE"], "WORK EXPERIENCE")
+        for i, sub in enumerate(subsections):
+            print(f"\n{i+1}. TITLE: {sub['title']}")
+            for j, b in enumerate(sub['bullets']):
+                print(f"   • {b[:100]}{'...' if len(b) > 100 else ''}")
+
+    print("=== PROJECTS SECTION ===")
+    if "PROJECTS" in sections:
+        subsections = parse_subsections(sections["PROJECTS"], "PROJECTS")
+        for i, sub in enumerate(subsections):
+            print(f"\n{i+1}. TITLE: {sub['title']}")
+            for j, b in enumerate(sub['bullets']):
+                print(f"   • {b[:100]}{'...' if len(b) > 100 else ''}")
+    
+    else:
+        print("No PROJECTS section found")
+    print()

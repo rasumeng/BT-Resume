@@ -2,10 +2,10 @@ import html
 import re
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
 # Centralized style knobs for your resume look-and-feel.
@@ -22,9 +22,12 @@ SECTION_BODY_FONT_SIZE = 9.9
 SECTION_LEADING = 12.3
 BULLET_INDENT = 11
 
-SECTION_TOP_SPACE = 0.045
+SECTION_TOP_SPACE = 0.005
 SECTION_BOTTOM_SPACE = 0.085
 HEADER_BOTTOM_SPACE = 0.055
+
+PAGE_WIDTH = 8.5
+USABLE_WIDTH = (PAGE_WIDTH - PAGE_LEFT_MARGIN - PAGE_RIGHT_MARGIN) * 72  # 7.5 inches = 540 points
 
 PREFERRED_SECTION_ORDER = [
     "EDUCATION",
@@ -33,6 +36,28 @@ PREFERRED_SECTION_ORDER = [
     "SKILLS",
     "LEADERSHIP",
 ]
+
+
+def _extract_date_from_title(line: str) -> tuple:
+    """
+    Extract date range from a title line.
+    Returns (title_without_date, date_string) or (line, None) if no date found.
+    
+    Examples:
+    - "AI Trainer – Handshake  Dec 2025 – Present" -> ("AI Trainer – Handshake", "Dec 2025 – Present")
+    - "Data Systems Engineer – FAPEMPA LLC  Feb 2023 – Dec 2024" -> ("Data Systems Engineer – FAPEMPA LLC", "Feb 2023 – Dec 2024")
+    """
+    # Pattern: Month Year – Month Year OR Month Year – Present
+    date_pattern = r'\b([A-Z][a-z]{2}\s+\d{4})\s+[–-]\s+(Present|[A-Z][a-z]{2}\s+\d{4})\s*$'
+    match = re.search(date_pattern, line)
+    
+    if match:
+        date_str = match.group(0).strip()
+        title = line[:match.start()].strip()
+        return (title, date_str)
+    
+    return (line, None)
+
 
 def generate_pdf(sections: dict, output_path: str):
     doc = SimpleDocTemplate(
@@ -73,6 +98,8 @@ def generate_pdf(sections: dict, output_path: str):
         "entry_bullet",
         parent=body_style,
         leftIndent=BULLET_INDENT,
+        firstLineIndent=-8,
+        spaceAfter=3,
     )
     top_name_style = ParagraphStyle(
         "top_name",
@@ -93,31 +120,93 @@ def generate_pdf(sections: dict, output_path: str):
 
     story = []
 
-    header_block = sections.get("_HEADER", "")
-    if header_block:
-        header_lines = [line.strip() for line in header_block.split("\n") if line.strip()]
-        if header_lines:
-            # Look for the first line that's just a simple name (2-3 capitalized words, no special chars)
-            name_idx = None
-            for i, line in enumerate(header_lines):
-                if _is_simple_name(line):
-                    name_idx = i
-                    break
-
-            if name_idx is not None:
-                # Render the name prominently on its own line
-                story.append(Paragraph(_safe(header_lines[name_idx]), top_name_style))
-                # Add a line break spacer between name and contact info
-                story.append(Spacer(1, 24))
-                # Then render contact info below
-                for i, line in enumerate(header_lines):
-                    if i != name_idx:
-                        story.append(Paragraph(_safe(line), top_info_style))
+    # Extract contact information if available
+    contact_info = sections.get("_CONTACT", {})
+    if isinstance(contact_info, dict) and contact_info:
+        # Build structured contact line from extracted info
+        contact_line_parts = []
+        if contact_info.get("email"):
+            contact_line_parts.append(contact_info["email"])
+        if contact_info.get("phone"):
+            contact_line_parts.append(contact_info["phone"])
+        if contact_info.get("linkedin"):
+            contact_line_parts.append(contact_info["linkedin"])
+        if contact_info.get("github"):
+            contact_line_parts.append(contact_info["github"])
+        
+        if contact_line_parts:
+            # Extract name from header
+            header_block = sections.get("_HEADER", "")
+            if header_block:
+                header_lines = [line.strip() for line in header_block.split("\n") if line.strip()]
+                if header_lines:
+                    # Look for a simple name in the header
+                    extracted_name = _extract_name_from_header(header_lines[0])
+                    
+                    if extracted_name:
+                        # Render the name prominently on its own line
+                        story.append(Paragraph(f"<b>{_safe(extracted_name)}</b>", top_name_style))
+                        # Add a small line break spacer between name and contact info
+                        story.append(Spacer(1, 6))
+                        # Render contact info
+                        story.append(Paragraph(_safe(" | ".join(contact_line_parts)), top_info_style))
+                        story.append(Spacer(1, HEADER_BOTTOM_SPACE * 72))
+                    else:
+                        # No name found, just render contact info
+                        story.append(Paragraph(_safe(" | ".join(contact_line_parts)), top_info_style))
+                        story.append(Spacer(1, HEADER_BOTTOM_SPACE * 72))
+                else:
+                    # No header lines, just render contact info
+                    story.append(Paragraph(_safe(" | ".join(contact_line_parts)), top_info_style))
+                    story.append(Spacer(1, HEADER_BOTTOM_SPACE * 72))
             else:
-                # No simple name found; render all lines as contact info
-                for line in header_lines:
-                    story.append(Paragraph(_safe(line), top_info_style))
-            story.append(Spacer(1, HEADER_BOTTOM_SPACE * 72))
+                # No header found, just render contact info
+                story.append(Paragraph(_safe(" | ".join(contact_line_parts)), top_info_style))
+                story.append(Spacer(1, HEADER_BOTTOM_SPACE * 72))
+    else:
+        # Fallback to original header rendering if contact extraction failed
+        header_block = sections.get("_HEADER", "")
+        if header_block:
+            header_lines = [line.strip() for line in header_block.split("\n") if line.strip()]
+            if header_lines:
+                # Look for the first line that's just a simple name (2-3 capitalized words, no special chars)
+                name_idx = None
+                extracted_name = None
+                
+                for i, line in enumerate(header_lines):
+                    if _is_simple_name(line):
+                        name_idx = i
+                        break
+                
+                # If no simple name found across lines, try to extract from first line
+                if name_idx is None and header_lines:
+                    first_line = header_lines[0]
+                    # Try to extract name from beginning of line before email or pipe
+                    extracted_name = _extract_name_from_header(first_line)
+
+                if name_idx is not None:
+                    # Render the name prominently on its own line
+                    story.append(Paragraph(f"<b>{_safe(header_lines[name_idx])}</b>", top_name_style))
+                    # Add a small line break spacer between name and contact info
+                    story.append(Spacer(1, 6))
+                    # Then render contact info below
+                    for i, line in enumerate(header_lines):
+                        if i != name_idx:
+                            story.append(Paragraph(_safe(line), top_info_style))
+                elif extracted_name:
+                    # Render extracted name prominently
+                    story.append(Paragraph(f"<b>{_safe(extracted_name)}</b>", top_name_style))
+                    # Add a small line break spacer between name and contact info
+                    story.append(Spacer(1, 6))
+                    # Render the remaining contact info (skip first line since we extracted name from it)
+                    for i, line in enumerate(header_lines):
+                        if i > 0:  # Skip the first line (where we extracted the name from)
+                            story.append(Paragraph(_safe(line), top_info_style))
+                else:
+                    # No simple name found; render all lines as contact info
+                    for line in header_lines:
+                        story.append(Paragraph(_safe(line), top_info_style))
+                story.append(Spacer(1, HEADER_BOTTOM_SPACE * 72))
 
     ordered_sections = []
     for section_name in PREFERRED_SECTION_ORDER:
@@ -125,7 +214,7 @@ def generate_pdf(sections: dict, output_path: str):
             ordered_sections.append((section_name, sections[section_name]))
 
     for section_name, content in sections.items():
-        if section_name == "_HEADER" or section_name in PREFERRED_SECTION_ORDER:
+        if section_name == "_HEADER" or section_name == "_CONTACT" or section_name in PREFERRED_SECTION_ORDER:
             continue
         ordered_sections.append((section_name, content))
 
@@ -168,7 +257,36 @@ def generate_pdf(sections: dict, output_path: str):
                     next_is_bullet = bool(re.match("^[\\\"'""''\\s]*[-*•●]+\\s*", next_line))
 
                 if next_is_bullet:
-                    story.append(Paragraph(safe_line, title_style))
+                    # Check if this title line has a date that should be right-aligned
+                    title_without_date, date_str = _extract_date_from_title(clean_line)
+                    
+                    if date_str:
+                        # Use a two-column table that properly spans full width
+                        # Both columns are Paragraph objects to maintain consistent styling
+                        title_para = Paragraph(f"<b>{_safe(title_without_date)}</b>", body_style)
+                        date_para = Paragraph(f"<b>{_safe(date_str)}</b>", body_style)
+                        
+                        # Create table with proper width allocation
+                        date_col_width = 2.0 * 72  # 144 points for date column
+                        title_col_width = USABLE_WIDTH - date_col_width
+                        
+                        title_table = Table(
+                            [[title_para, date_para]],
+                            colWidths=[title_col_width, date_col_width],
+                            hAlign='LEFT'
+                        )
+                        title_table.setStyle(TableStyle([
+                            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                            ('TOPPADDING', (0, 0), (-1, -1), 0),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                        ]))
+                        story.append(title_table)
+                    else:
+                        story.append(Paragraph(safe_line, title_style))
                 else:
                     story.append(Paragraph(safe_line, body_style))
 
@@ -253,12 +371,40 @@ def _is_simple_name(line: str) -> bool:
     return all(word and word[0].isupper() for word in words)
 
 
+def _extract_name_from_header(line: str) -> str:
+    """Extract name from a header line that may contain name, email, and other contact info.
+    
+    Examples:
+    - "Robert Asumeng asumengrobert787@gmail.com | 469-594-2623" -> "Robert Asumeng"
+    - "John Smith john@example.com | LinkedIn: ..." -> "John Smith"
+    """
+    # Split by common delimiters to get the first part
+    first_part = line.split("|")[0].split("@")[0].strip()
+    
+    # Extract words that look like a name (alphabetic, capitalized)
+    words = first_part.split()
+    name_words = []
+    
+    for word in words:
+        # Stop if we hit something that doesn't look like a name word
+        if not all(c.isalpha() or c.isspace() for c in word):
+            break
+        name_words.append(word)
+    
+    # If we got 2-3 name-like words that are capitalized, that's likely the name
+    extracted = " ".join(name_words)
+    if 2 <= len(name_words) <= 3 and _is_simple_name(extracted):
+        return extracted
+    
+    return ""
+
+
 if __name__ == "__main__":
     from core.input_parser import load_text, parse_section, load_pdf
     from core.output_builder import build_resume
 
     text = load_pdf("samples/resume.pdf")
     sections = parse_section(text)
-    improved = build_resume(sections, None)
-    generate_pdf(improved, "outputs/resume_output.pdf")
+    # Skip polishing for faster testing - use raw parsed sections
+    generate_pdf(sections, "outputs/resume_output.pdf")
     print("PDF generated!")

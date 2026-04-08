@@ -301,7 +301,9 @@ class BulletPolishPanel(ctk.CTkFrame):
 		chunks = []
 		for header, content in sections.items():
 			chunks.append(header)
-			chunks.append(content.strip())
+			# Skip dict values (like _CONTACT) - only process strings
+			if isinstance(content, str):
+				chunks.append(content.strip())
 			chunks.append("")
 		return "\n".join(chunks).strip()
 
@@ -310,7 +312,11 @@ class BulletPolishPanel(ctk.CTkFrame):
 		for header, content in sections.items():
 			chunks.append(header)
 
-			subsections = parse_subsections(content)
+			# Skip dict values (like _CONTACT) - only process strings
+			if not isinstance(content, str):
+				continue
+
+			subsections = parse_subsections(content, header)
 			if subsections:
 				for sub in subsections:
 					title = sub.get("title", "").strip()

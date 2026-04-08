@@ -264,6 +264,9 @@ class JobTailorPanel(ctk.CTkFrame):
 	def _sections_to_text(self, sections):
 		chunks = []
 		for header, content in sections.items():
+			# Skip non-string values like dicts (e.g., _CONTACT)
+			if not isinstance(content, str):
+				continue
 			chunks.append(header)
 			chunks.append(content.strip())
 			chunks.append("")
