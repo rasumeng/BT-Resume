@@ -36,15 +36,37 @@ Most AI resume tools cost money, require an account, or send your personal data 
 
 ---
 
-## Requirements
+## Quick Start (Easiest Way)
 
-- Python 3.10+
-- [Ollama](https://ollama.com) installed on your machine
-- 8GB+ RAM recommended
+### For Non-Technical Users: Download the Installer
+
+Download the Windows installer and let it handle everything:
+
+1. **Download** `ResumeAI-Setup-1.0.exe`
+2. **Run** the installer
+3. **Follow the setup wizard** (handles Ollama + model downloads)
+4. **Launch the app** from your Desktop
+
+That's it! No command line required, no Python installation needed.
+
+> See [releases page](https://github.com/yourusername/resume-ai/releases) for the latest installer.
+
+### For Developers: Manual Setup
+
+Read the section below for step-by-step setup.
 
 ---
 
-## Setup
+## Requirements
+
+- Python 3.10+ (if running from source)
+- [Ollama](https://ollama.com) installed on your machine
+- 8GB+ RAM recommended
+- Windows 7+ / Mac / Linux
+
+---
+
+## Setup (From Source)
 
 **1. Clone the repo**
 ```bash
@@ -141,6 +163,37 @@ Resume File (.txt or .pdf)
         ↓
   PDF Generator — assembles and outputs a clean PDF resume
 ```
+
+---
+
+## Building the Installer (For Developers)
+
+To create the Windows installer for distribution:
+
+1. **Install build tools:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Download and install [Inno Setup](https://jrsoftware.org/isdl.php)**
+
+3. **Run the build script:**
+   ```bash
+   # Windows (Command Prompt)
+   build.bat
+   
+   # Or PowerShell
+   .\build.ps1
+   ```
+
+   This automatically:
+   - Builds the Python executable with PyInstaller
+   - Packages it with all dependencies
+   - Creates the professional Windows installer
+
+4. **Output:** `dist/ResumeAI-Setup-1.0.exe`
+
+For detailed build instructions, see [BUILDING.md](BUILDING.md).
 
 ---
 
