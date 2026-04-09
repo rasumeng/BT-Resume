@@ -1,5 +1,8 @@
 import pdfplumber
 import re
+import json
+from .llm_client import ask_llm
+from .prompts import parse_resume_structure_prompt
 
 
 HEADER_ALIASES = {
@@ -111,6 +114,88 @@ def load_pdf(filepath: str) -> str:
         i += 1
     
     return "\n".join(joined)
+
+
+def parse_resume_with_mistral(filepath: str) -> dict:
+    """
+    Unified parser: handles both PDF and TXT files.
+    Uses Mistral to extract and structure resume data into JSON.
+    
+    Args:
+        filepath: Path to resume file (PDF or TXT)
+    
+    Returns:
+        dict: Structured resume data with sections like work_experience, projects, leadership, etc.
+              Returns None and prints error if parsing fails.
+    
+    Example return structure:
+    {
+        "work_experience": [
+            {
+                "position": "Senior Engineer",
+                "company": "Google",
+                "location": "Mountain View, CA",
+                "start_date": "Jan 2020",
+                "end_date": "Present",
+                "bullets": [
+                    {"text": "Led team...", "has_location": false, "has_date": false}
+                ]
+            }
+        ],
+        "projects": [...],
+        "leadership": [...],
+        "education": [...],
+        "skills": [...]
+    }
+    """
+    # Determine file type and extract text
+    if filepath.lower().endswith('.pdf'):
+        resume_text = load_pdf(filepath)
+    elif filepath.lower().endswith(('.txt', '.text')):
+        resume_text = load_text(filepath)
+    else:
+        print(f"ERROR: Unsupported file type. Use .pdf or .txt")
+        return None
+    
+    if not resume_text or not resume_text.strip():
+        print(f"ERROR: Could not extract text from {filepath}")
+        return None
+    
+    # Generate parsing prompt
+    prompt = parse_resume_structure_prompt(resume_text)
+    
+    # Call Mistral for structured parsing
+    response = ask_llm(prompt, model=None, max_tokens=8192, task_type="parse")
+    
+    if response is None:
+        print("ERROR: Failed to get response from Mistral")
+        return None
+    
+    # Extract and parse JSON from response
+    try:
+        # Handle markdown code blocks if present
+        clean_response = response
+        if "```json" in clean_response:
+            clean_response = clean_response.replace("```json", "").replace("```", "")
+        elif "```" in clean_response:
+            clean_response = clean_response.replace("```", "")
+        
+        # Find JSON object boundaries
+        start_idx = clean_response.find('{')
+        end_idx = clean_response.rfind('}') + 1
+        
+        if start_idx == -1 or end_idx == 0:
+            print("ERROR: No JSON found in Mistral response")
+            return None
+        
+        json_str = clean_response[start_idx:end_idx]
+        parsed_resume = json.loads(json_str)
+        
+        return parsed_resume
+        
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Failed to parse JSON from Mistral response: {e}")
+        return None
 
 
 def _normalize_header_text(line: str) -> str:

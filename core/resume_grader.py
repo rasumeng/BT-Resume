@@ -5,7 +5,7 @@ from core.llm_client import ask_llm
 class ResumeGrader:
     def grade(self, resume_text):
         prompt = get_grader_prompt(resume_text)
-        response = ask_llm(prompt, model="mistral:7b")
+        response = ask_llm(prompt, task_type="grade")
 
         if not response:
             return None

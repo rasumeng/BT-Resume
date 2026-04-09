@@ -119,3 +119,119 @@ Return ONLY a valid JSON object in exactly this format, with no explanation, no 
 {{"ats_score": 0, "sections_score": 0, "bullets_score": 0, "keywords_score": 0}}
 
 SCORES:"""
+
+
+def parse_resume_structure_prompt(resume_text: str) -> str:
+    return f"""You are a resume parsing expert. Your task is to recognize common resume formatting patterns and extract structured data.
+
+RESUME:
+{resume_text}
+
+COMMON RESUME PATTERNS TO RECOGNIZE:
+
+1. WORK EXPERIENCE / PROFESSIONAL EXPERIENCE / EMPLOYMENT:
+   - Typical format: "Title/Position – Company/Organization [Location] [Date Range]"
+   - Can also appear as separate lines or multiple formats
+   - Each entry has: a job title, a company/organization name, optional location, optional dates, and bullet points describing accomplishments
+   - Locations can be cities, states, or "Remote"
+   - Dates are typically in format: "Month Year – Month Year" or "Month Year – Present"
+
+2. PROJECTS / ACADEMIC PROJECTS / PERSONAL PROJECTS:
+   - Typical format: "Project Name [| Technology Stack]"
+   - Location: Projects rarely have locations unless specified
+   - Dates: May not have dates
+   - Technologies: Often listed inline with project name (after | or parentheses)
+   - Each project has bullet points describing what was built/accomplished
+
+3. LEADERSHIP / ACTIVITIES / INVOLVEMENT / EXTRACURRICULARS:
+   - Typical format: "Title – Organization [Location] [Date Range]"
+   - Similar to work experience but for clubs, organizations, volunteering
+   - Has: a title, organization name, optional location, optional dates, bullet points
+
+4. EDUCATION:
+   - Typical format: "School/University [Location] [Date]" with degree info on same or next line
+   - Has: degree name, school name, optional location, optional date/graduation date, optional details (GPA, honors, etc.)
+
+5. SKILLS / TECHNICAL SKILLS / COMPETENCIES:
+   - Usually listed as categories with items underneath
+   - May be comma-separated or bullet-pointed
+   - Extract category names and skill items
+
+EXTRACTION RULES - DO NOT HARDCODE:
+- Look for PATTERNS not specific keywords. For example:
+  - "Title/Position – Company" format indicates work experience entry
+  - "Name [| Technology]" on its own line often indicates a project
+  - "Title – Organization" in a leadership/activity section
+  
+- For locations: Extract only if explicitly shown in the HEADER line of an entry (not from bullet content)
+  - Locations appear after a dash, comma, or in parentheses near the title/company
+  - Do NOT infer locations from bullet points
+
+- For dates: Extract only if explicitly shown in the HEADER line (not from bullet content)
+  - Typically at the end of an entry header
+  - Format: "Month Year – Month Year" or "Month Year – Present"
+
+- For bullets: Extract EVERY bullet point exactly as written
+  - has_location in bullet: true ONLY if the bullet text itself contains a location mention (city, state, address)
+  - has_date in bullet: true ONLY if the bullet text itself contains a date or time period
+
+- For company/organization names: Extract exactly as they appear in the resume, do NOT set to null if present
+- For technologies in projects: Extract inline technologies if listed (e.g., "Python", "React", "JavaScript")
+
+Return ONLY valid JSON with no explanation, markdown formatting, or code blocks - just pure JSON:
+
+{{
+  "work_experience": [
+    {{
+      "position": "string",
+      "company": "string",
+      "location": "string or null",
+      "start_date": "string or null",
+      "end_date": "string or null",
+      "bullets": [
+        {{"text": "string", "has_location": false or true, "has_date": false or true}}
+      ]
+    }}
+  ],
+  "projects": [
+    {{
+      "name": "string",
+      "location": "string or null",
+      "date": "string or null",
+      "technologies": "string or null",
+      "bullets": [
+        {{"text": "string", "has_location": false or true, "has_date": false or true}}
+      ]
+    }}
+  ],
+  "leadership": [
+    {{
+      "title": "string",
+      "organization": "string or null",
+      "location": "string or null",
+      "date": "string or null",
+      "bullets": [
+        {{"text": "string", "has_location": false or true, "has_date": false or true}}
+      ]
+    }}
+  ],
+  "education": [
+    {{
+      "degree": "string",
+      "school": "string",
+      "location": "string or null",
+      "date": "string or null",
+      "details": [
+        {{"text": "string"}}
+      ]
+    }}
+  ],
+  "skills": [
+    {{
+      "category": "string",
+      "items": ["string"]
+    }}
+  ]
+}}
+
+PARSED RESUME:"""

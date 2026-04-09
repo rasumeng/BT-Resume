@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beyond The Resume</title>
+    <style>
+        /* ═════════════════════════════════════════════════════════════ */
+        /* DESIGN SYSTEM - Colors & Typography */
+        /* ═════════════════════════════════════════════════════════════ */
+        
+        :root {
+            --cream: #F5F0E8;
+            --gold: #C9A84C;
+            --dark: #0D0D0B;
+            --dark-2: #1A1A17;
+            --dark-3: #252520;
+            --dark-4: #33332D;
+            --text: #F5F0E8;
+            --text-muted: #C4BFB3;
+            --text-dim: #8B8680;
+            
+            --font-display: 'Georgia', serif;
+            --font-body: 'Helvetica', 'Arial', sans-serif;
+            
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 20px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* RESET & GLOBALS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--dark);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* LAYOUT STRUCTURE */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-2) 100%);
+            border-bottom: 2px solid var(--gold);
+            padding: var(--spacing-lg) var(--spacing-xl);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xl);
+            flex-shrink: 0;
+            height: 80px;
+        }
+
+        .header-logo {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--cream);
+        }
+
+        .header-sep {
+            color: var(--gold);
+            font-size: 24px;
+            opacity: 0.7;
+        }
+
+        .header-title {
+            font-family: var(--font-display);
+            font-size: 24px;
+            color: var(--cream);
+            flex-grow: 1;
+            letter-spacing: 1px;
+        }
+
+        /* Main Container */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        aside {
+            width: 200px;
+            background-color: var(--dark-3);
+            border-right: 1px solid var(--gold);
+            padding: var(--spacing-lg) 0;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        /* Nav Button */
+        .nav-btn {
+            width: 100%;
+            padding: var(--spacing-lg);
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--dark-4);
+            color: var(--cream);
+        }
+
+        .nav-btn.active {
+            background-color: var(--dark-4);
+            color: var(--gold);
+            border-left-color: var(--gold);
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-2xl);
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* PANELS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* FORM ELEMENTS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        .form-group {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .form-group label {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: var(--spacing-sm);
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="file"],
+        .form-group textarea {
+            width: 100%;
+            padding: var(--spacing-md);
+            background-color: var(--dark-2);
+            border: 1px solid var(--dark-4);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 14px;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group input[type="file"]:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: var(--spacing-md);
+            background-color: var(--dark-2);
+            border: 1px solid var(--dark-4);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 14px;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* BUTTONS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        button {
+            font-family: var(--font-body);
+            font-size: 14px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--gold);
+            color: var(--dark);
+            font-weight: bold;
+        }
+
+        .btn-primary:hover {
+            background-color: #D4B55D;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--dark-4);
+        }
+
+        .btn-small {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: 12px;
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* CARDS & SECTIONS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        .card {
+            background-color: var(--dark-2);
+            border: 1px solid var(--dark-4);
+            border-radius: 4px;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .card-header {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: var(--spacing-md);
+            letter-spacing: 0.5px;
+        }
+
+        .card-content {
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .score-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--gold);
+            font-family: var(--font-display);
+        }
+
+        .score-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-top: var(--spacing-xs);
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* TABS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        .tab-container {
+            display: flex;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+            border-bottom: 1px solid var(--dark-4);
+        }
+
+        .tab {
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-family: var(--font-body);
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--cream);
+        }
+
+        .tab.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* OUTPUT & RESULTS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        .output-box {
+            background-color: var(--dark-2);
+            border-left: 3px solid var(--gold);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-lg);
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 2px;
+        }
+
+        .bullet-item {
+            padding: var(--spacing-sm) 0;
+            margin: var(--spacing-sm) 0;
+            border-left: 2px solid var(--dark-4);
+            padding-left: var(--spacing-md);
+            transition: border-color 0.2s;
+        }
+
+        .bullet-item:hover {
+            border-left-color: var(--gold);
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* STATUS & MESSAGING */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        .status {
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: 4px;
+            margin-bottom: var(--spacing-lg);
+            font-size: 13px;
+        }
+
+        .status.info {
+            background-color: rgba(201, 168, 76, 0.1);
+            color: var(--gold);
+            border: 1px solid var(--gold);
+        }
+
+        .status.success {
+            background-color: rgba(100, 200, 100, 0.1);
+            color: #64C864;
+            border: 1px solid #64C864;
+        }
+
+        .status.error {
+            background-color: rgba(220, 100, 100, 0.1);
+            color: #DC6464;
+            border: 1px solid #DC6464;
+        }
+
+        .status.loading {
+            background-color: rgba(201, 168, 76, 0.1);
+            color: var(--gold);
+            border: 1px solid var(--gold);
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* SCROLLBARS */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--dark-2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--dark-4);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gold);
+        }
+
+        /* ═════════════════════════════════════════════════════════════ */
+        /* RESPONSIVE */
+        /* ═════════════════════════════════════════════════════════════ */
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            aside {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--gold);
+                padding: var(--spacing-md) 0;
+                display: flex;
+                overflow-x: auto;
+            }
+
+            .nav-btn {
+                border-left: none;
+                border-bottom: 2px solid transparent;
+                padding: var(--spacing-md) var(--spacing-lg);
+            }
+
+            .nav-btn.active {
+                border-left: none;
+                border-bottom-color: var(--gold);
+            }
+
+            .content {
+                padding: var(--spacing-lg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="header-logo">BTR</div>
+        <div class="header-sep">=</div>
+        <div class="header-title" id="headerTitle">MY RESUMES</div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <div class="container">
+        <!-- SIDEBAR NAVIGATION -->
+        <aside>
+            <button class="nav-btn active" onclick="switchPanel('panel-my-resumes', this)">My Resumes</button>
+            <button class="nav-btn" onclick="switchPanel('panel-bullet-polish', this)">Bullet Polish</button>
+            <button class="nav-btn" onclick="switchPanel('panel-job-tailor', this)">Job Tailor</button>
+            <button class="nav-btn" onclick="switchPanel('panel-experience', this)">Experience</button>
+        </aside>
+
+        <!-- CONTENT AREA -->
+        <main class="content">
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- PANEL 1: MY RESUMES -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <section id="panel-my-resumes" class="panel active">
+                <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--cream); margin-bottom: var(--spacing-xl);">My Resumes</h2>
+
+                <div style="display: grid; grid-template-columns: 350px 1fr; gap: var(--spacing-xl); height: calc(100vh - 200px);">
+                    <!-- RESUME LIST (LEFT) -->
+                    <div style="display: flex; flex-direction: column;">
+                        <div class="form-group" style="flex: 0;">
+                            <label>Upload Resume</label>
+                            <input type="file" id="resumeFile" accept=".pdf,.txt" style="margin-bottom: var(--spacing-md);">
+                            <button class="btn-primary" onclick="uploadResume()" style="width: 100%;">Parse Resume</button>
+                        </div>
+
+                        <div style="flex: 1; overflow-y: auto; border: 1px solid var(--dark-4); border-radius: 4px; padding: var(--spacing-md); background-color: var(--dark-2);">
+                            <div id="resumeListContainer" style="display: none;">
+                                <div style="font-size: 12px; color: var(--text-dim); text-transform: uppercase; margin-bottom: var(--spacing-md); letter-spacing: 0.5px;">Recent Resumes</div>
+                                <div id="resumeList"></div>
+                            </div>
+                            <div id="resumeEmpty" style="color: var(--text-dim); text-align: center; padding: var(--spacing-xl);">
+                                No resumes loaded yet
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PREVIEW & SCORES (RIGHT) -->
+                    <div style="display: flex; flex-direction: column; overflow-y: auto;">
+                        <div id="resumeStatus"></div>
+
+                        <div id="resumeResults" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">Resume Scores</div>
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-lg); margin-top: var(--spacing-lg);">
+                                    <div>
+                                        <div class="score-display" id="scoreOverall">-</div>
+                                        <div class="score-label">Overall</div>
+                                    </div>
+                                    <div>
+                                        <div class="score-display" id="scoreATS">-</div>
+                                        <div class="score-label">ATS Score</div>
+                                    </div>
+                                    <div>
+                                        <div class="score-display" id="scoreSections">-</div>
+                                        <div class="score-label">Sections</div>
+                                    </div>
+                                    <div>
+                                        <div class="score-display" id="scoreBullets">-</div>
+                                        <div class="score-label">Bullets</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card" style="flex: 1;">
+                                <div class="card-header">Preview</div>
+                                <div class="output-box" id="resumePreview" style="margin-top: var(--spacing-md);"></div>
+                            </div>
+
+                            <button class="btn-primary" onclick="gradeResume()" style="width: 100%; margin-top: var(--spacing-lg);">Grade Resume</button>
+                            <button class="btn-secondary" onclick="downloadPDF()" style="width: 100%; margin-top: var(--spacing-md);">Download PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- PANEL 2: BULLET POLISH -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <section id="panel-bullet-polish" class="panel">
+                <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--cream); margin-bottom: var(--spacing-xl);">Bullet Polish</h2>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); height: calc(100vh - 200px);">
+                    <!-- INPUT (LEFT) -->
+                    <div style="display: flex; flex-direction: column;">
+                        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+                            <div class="card-header">Original Bullets</div>
+                            <textarea id="bulletsInput" placeholder="- Managed team of developers&#10;- Implemented new features&#10;- Improved performance by 20%" style="flex: 1; margin-top: var(--spacing-md);"></textarea>
+                        </div>
+                        <button class="btn-primary" onclick="polishBullets()" style="width: 100%; margin-top: var(--spacing-lg);">Polish Bullets</button>
+                    </div>
+
+                    <!-- OUTPUT (RIGHT) -->
+                    <div style="display: flex; flex-direction: column;">
+                        <div id="bulletStatus"></div>
+                        <div id="bulletResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                            <div class="card" style="flex: 1; overflow-y: auto;">
+                                <div class="card-header">Polished Results</div>
+                                <div id="polishedBulletsList" style="margin-top: var(--spacing-md);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- PANEL 3: JOB TAILOR -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <section id="panel-job-tailor" class="panel">
+                <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--cream); margin-bottom: var(--spacing-xl);">Job Tailor</h2>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); height: calc(100vh - 200px);">
+                    <!-- JOB DESCRIPTION (LEFT) -->
+                    <div style="display: flex; flex-direction: column;">
+                        <div class="form-group">
+                            <label>Resume File (optional)</label>
+                            <input type="file" id="jobTailorResumeFile" accept=".pdf,.txt">
+                        </div>
+                        <div class="card" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
+                            <div class="card-header">Job Description</div>
+                            <textarea id="jobInput" placeholder="Senior Software Engineer - 5+ years experience in Python/JavaScript, leading teams..." style="flex: 1; margin-top: var(--spacing-md);"></textarea>
+                        </div>
+                        <button class="btn-primary" onclick="tailorResume()" style="width: 100%; margin-top: var(--spacing-lg);">Tailor Resume</button>
+                    </div>
+
+                    <!-- TAILORED OUTPUT (RIGHT) -->
+                    <div style="display: flex; flex-direction: column; overflow-y: auto;">
+                        <div id="tailorStatus"></div>
+                        <div id="tailorResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                            <div class="card" style="flex: 1; overflow-y: auto;">
+                                <div class="card-header">Tailored Resume</div>
+                                <div class="output-box" id="tailorOutput" style="margin-top: var(--spacing-md);"></div>
+                            </div>
+                            <button class="btn-primary" onclick="downloadPDF()" style="width: 100%; margin-top: var(--spacing-lg);">Download PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- PANEL 4: EXPERIENCE -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <section id="panel-experience" class="panel">
+                <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--cream); margin-bottom: var(--spacing-xl);">Experience Updater</h2>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); height: calc(100vh - 200px);">
+                    <!-- INPUT (LEFT) -->
+                    <div style="display: flex; flex-direction: column;">
+                        <div class="form-group">
+                            <label>Section</label>
+                            <select id="experienceSection" style="width: 100%; padding: var(--spacing-md); background-color: var(--dark-2); border: 1px solid var(--dark-4); color: var(--text); font-family: var(--font-body); border-radius: 4px;">
+                                <option value="work_experience">Work Experience</option>
+                                <option value="projects">Projects</option>
+                                <option value="leadership">Leadership</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Your Experience</label>
+                            <textarea id="experienceInput" placeholder="I worked on a team of 5 developers building a mobile app. We used React Native and Node.js. I was responsible for..." style="flex: 1;"></textarea>
+                        </div>
+                        <button class="btn-primary" onclick="generateExperience()" style="width: 100%;">Generate Bullets</button>
+                    </div>
+
+                    <!-- OUTPUT (RIGHT) -->
+                    <div style="display: flex; flex-direction: column;">
+                        <div id="experienceStatus"></div>
+                        <div id="experienceResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                            <div class="card" style="flex: 1; overflow-y: auto;">
+                                <div class="card-header">Generated Bullets</div>
+                                <div id="generatedBulletsList" style="margin-top: var(--spacing-md);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // GLOBALS
+        // ═══════════════════════════════════════════════════════════════
+
+        const API_BASE = 'http://localhost:5000/api';
+        let currentSessionId = null;
+
+        // ═══════════════════════════════════════════════════════════════
+        // UI HELPERS
+        // ═══════════════════════════════════════════════════════════════
+
+        function switchPanel(panelId, button) {
+            // Hide all panels
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+            // Show selected panel
+            document.getElementById(panelId).classList.add('active');
+            button.classList.add('active');
+
+            // Update header title
+            const titles = {
+                'panel-my-resumes': 'MY RESUMES',
+                'panel-bullet-polish': 'BULLET POLISH',
+                'panel-job-tailor': 'JOB TAILOR',
+                'panel-experience': 'EXPERIENCE'
+            };
+            document.getElementById('headerTitle').textContent = titles[panelId] || 'BEYOND THE RESUME';
+        }
+
+        function switchTab(tabId, button) {
+            // Hide all tab contents in this container
+            const container = button.closest('.tab-container').parentElement;
+            container.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            container.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            button.classList.add('active');
+        }
+
+        function showStatus(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="status ${type}">${message}</div>`;
+            el.style.display = 'block';
+        }
+
+        function hideStatus(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // API CALLS
+        // ═══════════════════════════════════════════════════════════════
+
+        async function uploadResume() {
+            const file = document.getElementById('resumeFile').files[0];
+            if (!file) {
+                showStatus('resumeStatus', 'Please select a file', 'error');
+                return;
+            }
+
+            showStatus('resumeStatus', 'Parsing resume...', 'loading');
+            document.getElementById('resumeResults').style.display = 'none';
+            document.getElementById('resumeListContainer').style.display = 'none';
+            document.getElementById('resumeEmpty').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/parse-resume`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentSessionId = data.session_id;
+                    
+                    // Add to resume list
+                    addResumeToList(file.name);
+                    
+                    // Show preview
+                    const preview = JSON.stringify(data.sections, null, 2);
+                    document.getElementById('resumePreview').innerHTML = `<pre>${preview}</pre>`;
+                    document.getElementById('resumeResults').style.display = 'block';
+                    document.getElementById('resumeListContainer').style.display = 'block';
+                    
+                    showStatus('resumeStatus', `✓ Resume parsed successfully!`, 'success');
+                    setTimeout(() => hideStatus('resumeStatus'), 3000);
+                } else {
+                    showStatus('resumeStatus', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('resumeStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function addResumeToList(filename) {
+            const list = document.getElementById('resumeList');
+            const item = document.createElement('div');
+            item.className = 'bullet-item';
+            item.style.cursor = 'pointer';
+            item.innerHTML = `📄 ${filename}`;
+            item.onclick = () => {
+                // Highlight this item
+                document.querySelectorAll('#resumeList .bullet-item').forEach(el => {
+                    el.style.borderLeftColor = 'var(--dark-4)';
+                    el.style.opacity = '0.7';
+                });
+                item.style.borderLeftColor = 'var(--gold)';
+                item.style.opacity = '1';
+            };
+            list.appendChild(item);
+        }
+
+        async function gradeResume() {
+            if (!currentSessionId) {
+                showStatus('resumeStatus', 'Please parse a resume first', 'error');
+                return;
+            }
+
+            showStatus('resumeStatus', 'Grading resume...', 'loading');
+
+            try {
+                const response = await fetch(`${API_BASE}/grade-resume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const scores = data.scores;
+                    document.getElementById('scoreOverall').textContent = scores.overall || '-';
+                    document.getElementById('scoreATS').textContent = scores.ats_score || '-';
+                    document.getElementById('scoreSections').textContent = scores.sections_score || '-';
+                    document.getElementById('scoreBullets').textContent = scores.bullets_score || '-';
+
+                    document.getElementById('resumeResults').style.display = 'block';
+                    showStatus('resumeStatus', '✓ Resume graded!', 'success');
+                    setTimeout(() => hideStatus('resumeStatus'), 3000);
+                } else {
+                    showStatus('resumeStatus', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('resumeStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function polishBullets() {
+            const text = document.getElementById('bulletsInput').value;
+            if (!text.trim()) {
+                showStatus('bulletStatus', 'Please enter bullets', 'error');
+                return;
+            }
+
+            const bullets = text.split('\n').filter(b => b.trim());
+
+            showStatus('bulletStatus', 'Polishing bullets...', 'loading');
+            document.getElementById('bulletResults').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/polish-bullets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bullets })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const list = document.getElementById('polishedBulletsList');
+                    list.innerHTML = data.polished_bullets.map(b =>
+                        `<div class="bullet-item">• ${b}</div>`
+                    ).join('');
+
+                    document.getElementById('bulletResults').style.display = 'block';
+                    showStatus('bulletStatus', '✓ Bullets polished!', 'success');
+                    setTimeout(() => hideStatus('bulletStatus'), 3000);
+                } else {
+                    showStatus('bulletStatus', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('bulletStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function tailorResume() {
+            const job = document.getElementById('jobInput').value;
+            if (!job.trim()) {
+                showStatus('tailorStatus', 'Please enter a job description', 'error');
+                return;
+            }
+
+            if (!currentSessionId) {
+                showStatus('tailorStatus', 'Please parse a resume first', 'error');
+                return;
+            }
+
+            showStatus('tailorStatus', 'Tailoring resume...', 'loading');
+
+            try {
+                const response = await fetch(`${API_BASE}/tailor-resume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        job_description: job
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('tailorOutput').innerHTML = `<pre>${JSON.stringify(data.tailored_resume, null, 2)}</pre>`;
+                    document.getElementById('tailorResults').style.display = 'block';
+                    showStatus('tailorStatus', '✓ Resume tailored!', 'success');
+                    setTimeout(() => hideStatus('tailorStatus'), 3000);
+                } else {
+                    showStatus('tailorStatus', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('tailorStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadPDF() {
+            if (!currentSessionId) {
+                alert('No resume to download');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/generate-pdf`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'resume.pdf';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('Failed to download PDF');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function generateExperience() {
+            const text = document.getElementById('experienceInput').value;
+            if (!text.trim()) {
+                showStatus('experienceStatus', 'Please describe your experience', 'error');
+                return;
+            }
+
+            showStatus('experienceStatus', 'Generating bullets...', 'loading');
+            document.getElementById('experienceResults').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/update-experience`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: text })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const bullets = data.bullets.split('\n').filter(b => b.trim());
+                    const list = document.getElementById('generatedBulletsList');
+                    list.innerHTML = bullets.map(b =>
+                        `<div class="bullet-item">• ${b.replace(/^- /, '').trim()}</div>`
+                    ).join('');
+
+                    document.getElementById('experienceResults').style.display = 'flex';
+                    showStatus('experienceStatus', '✓ Bullets generated!', 'success');
+                    setTimeout(() => hideStatus('experienceStatus'), 3000);
+                } else {
+                    showStatus('experienceStatus', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('experienceStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
