@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Experience | Beyond The Resume{% endblock %}
+{% block header_title %}EXPERIENCE{% endblock %}
+
+{% block content %}
+<section id="panel-experience" class="panel active">
+    <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--cream); margin-bottom: var(--spacing-xl);">Experience Updater</h2>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); height: calc(100vh - 200px);">
+        <!-- INPUT (LEFT) -->
+        <div style="display: flex; flex-direction: column;">
+            <div class="form-group">
+                <label>Section</label>
+                <select id="experienceSection" style="width: 100%; padding: var(--spacing-md); background-color: var(--dark-2); border: 1px solid var(--dark-4); color: var(--text); font-family: var(--font-body); border-radius: 4px;">
+                    <option value="work_experience">Work Experience</option>
+                    <option value="projects">Projects</option>
+                    <option value="leadership">Leadership</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Your Experience</label>
+                <textarea id="experienceInput" placeholder="I worked on a team of 5 developers building a mobile app. We used React Native and Node.js. I was responsible for..." style="flex: 1;"></textarea>
+            </div>
+            <button class="btn-primary" onclick="generateExperience()" style="width: 100%;">Generate Bullets</button>
+        </div>
+
+        <!-- OUTPUT (RIGHT) -->
+        <div style="display: flex; flex-direction: column;">
+            <div id="experienceStatus"></div>
+            <div id="experienceResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                <div class="card" style="flex: 1; overflow-y: auto;">
+                    <div class="card-header">Generated Bullets</div>
+                    <div id="generatedBulletsList" style="margin-top: var(--spacing-md);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

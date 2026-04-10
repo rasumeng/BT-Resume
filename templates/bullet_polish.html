@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Bullet Polish | Beyond The Resume{% endblock %}
+{% block header_title %}BULLET POLISH{% endblock %}
+
+{% block content %}
+<style>
+    /* ══════════════ MODERN BULLET POLISH CONTAINER ══════════════ */
+    .bullet-polish-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-height: calc(100vh - 180px);
+        padding: 20px;
+    }
+
+    /* ══════════════ PANELS ══════════════ */
+    .modern-panel {
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
+        border: 1px solid var(--dark-4);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .modern-panel-header {
+        padding: 20px;
+        background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
+        border-bottom: 2px solid var(--gold);
+    }
+
+    .modern-panel-header h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--gold);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 0;
+    }
+
+    .modern-panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: var(--dark-2);
+    }
+
+    /* ══════════════ GRID LAYOUT ══════════════ */
+    .bullet-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        height: calc(100vh - 200px);
+    }
+
+    .bullet-column {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ══════════════ INPUT & OUTPUT AREAS ══════════════ */
+    #bulletsInput,
+    #polishedBulletsList {
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-muted);
+    }
+
+    #bulletsInput {
+        background-color: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--dark-4);
+        color: var(--cream);
+        padding: 16px;
+        border-radius: 8px;
+        resize: none;
+    }
+
+    #bulletsInput:focus {
+        outline: none;
+        border-color: var(--gold);
+        box-shadow: 0 0 8px rgba(201, 168, 76, 0.2);
+    }
+
+    #polishedBulletsList {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .polished-bullet {
+        background: rgba(201, 168, 76, 0.08);
+        border: 1px solid rgba(201, 168, 76, 0.2);
+        border-left: 3px solid var(--gold);
+        padding: 12px 14px;
+        border-radius: 6px;
+        color: var(--cream);
+        font-size: 13px;
+        line-height: 1.6;
+        transition: all 0.3s ease;
+    }
+
+    .polished-bullet:hover {
+        background: rgba(201, 168, 76, 0.12);
+        border-color: rgba(201, 168, 76, 0.4);
+        box-shadow: 0 3px 12px rgba(201, 168, 76, 0.15);
+        transform: translateX(4px);
+    }
+
+    /* ══════════════ STATUS & BUTTONS ══════════════ */
+    #bulletStatus {
+        margin-bottom: 16px;
+    }
+
+    .status-box {
+        padding: 12px 16px;
+        background: rgba(201, 168, 76, 0.1);
+        border: 1px solid rgba(201, 168, 76, 0.3);
+        border-radius: 8px;
+        color: var(--gold);
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .polish-btn {
+        width: 100%;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%);
+        color: var(--dark);
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 16px;
+    }
+
+    .polish-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(201, 168, 76, 0.3);
+    }
+
+    .polish-btn:active {
+        transform: translateY(0);
+    }
+</style>
+
+<section id="panel-bullet-polish" class="panel active">
+    <div class="bullet-polish-container">
+        <!-- HEADER -->
+        <div style="margin-bottom: 8px;">
+            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">Bullet Polish</h1>
+            <p style="font-size: 13px; color: var(--text-dim); margin: 0;">Transform basic bullet points into compelling achievements</p>
+        </div>
+
+        <!-- MAIN PANEL GRID -->
+        <div class="bullet-grid">
+            <!-- INPUT (LEFT) -->
+            <div class="bullet-column">
+                <div class="modern-panel">
+                    <div class="modern-panel-header">
+                        <h3>📝 Original Bullets</h3>
+                    </div>
+                    <div class="modern-panel-content" style="flex: 1;">
+                        <textarea id="bulletsInput" 
+                                  placeholder="- Managed team of developers&#10;- Implemented new features&#10;- Improved performance by 20%"
+                                  style="width: 100%; height: 100%; border: none; background: transparent; color: var(--cream); resize: none; font-family: 'Courier New', monospace; font-size: 13px; padding: 0;"></textarea>
+                    </div>
+                </div>
+                <button class="polish-btn" onclick="polishBullets()">✨ Polish Bullets</button>
+            </div>
+
+            <!-- OUTPUT (RIGHT) -->
+            <div class="bullet-column">
+                <div id="bulletStatus"></div>
+                <div id="bulletResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                    <div class="modern-panel" style="flex: 1;">
+                        <div class="modern-panel-header">
+                            <h3>💫 Polished Results</h3>
+                        </div>
+                        <div class="modern-panel-content" style="flex: 1; overflow-y: auto;">
+                            <div id="polishedBulletsList"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="bulletPlaceholder" style="flex: 1; display: flex; flex-direction: column;">
+                    <div class="modern-panel" style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center; color: var(--text-dim);">
+                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;">✨</div>
+                            <p>Enter your bullet points and click "Polish Bullets"</p>
+                            <p style="font-size: 12px; margin-top: 8px;">Your improved bullets will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
