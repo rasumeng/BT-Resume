@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Beyond The Resume{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -15,9 +16,9 @@
                 <img src="{{ url_for('static', filename='images/BTR-Logo Transparent.png') }}" alt="BTR" class="logo-img">
             </div>
             <button class="nav-btn active" onclick="switchPanel('panel-my-resumes', this)">Resumes</button>
-            <button class="nav-btn" onclick="switchPanel('panel-bullet-polish', this)">Polish Bullets</button>
+            <button class="nav-btn" onclick="switchPanel('panel-bullet-polish', this)">Polish Resume</button>
             <button class="nav-btn" onclick="switchPanel('panel-job-tailor', this)">Tailor Resume</button>
-            <button class="nav-btn" onclick="switchPanel('panel-experience', this)">Experience</button>
+            <button class="nav-btn" onclick="switchPanel('panel-experience', this)">Feedback</button>
         </aside>
 
         <!-- CONTENT AREA -->

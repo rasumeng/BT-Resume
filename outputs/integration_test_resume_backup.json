@@ -1,0 +1,157 @@
+{
+  "contact": {
+    "name": "Sarah Chen",
+    "email": "sarah.chen@gmail.com",
+    "phone": "(415) 555-0123",
+    "location": "San Francisco, CA",
+    "linkedin": "linkedin.com/in/sarahchen",
+    "github": "github.com/sarahchen",
+    "portfolio": "sarahchen.dev",
+    "websites": {
+      "blog": "blog.sarahchen.dev",
+      "projects": "projects.sarahchen.dev"
+    }
+  },
+  "work_experience": [
+    {
+      "position": "Staff Software Engineer",
+      "company": "Google",
+      "location": "Mountain View, CA",
+      "start_date": "Aug 2022",
+      "end_date": "Present",
+      "bullets": [
+        {
+          "text": "Led redesign of authentication system serving 2B+ users, reducing login latency by 30% to improve conversion rate",
+          "has_location": false,
+          "has_date": false
+        },
+        {
+          "text": "Mentored team of 5 engineers on system design and code quality, promoting 2 to senior roles",
+          "has_location": false,
+          "has_date": false
+        },
+        {
+          "text": "Implemented feature flags system enabling safe rollouts of features to 50M+ users daily",
+          "has_location": false,
+          "has_date": false
+        }
+      ]
+    },
+    {
+      "position": "Senior Software Engineer",
+      "company": "Stripe",
+      "location": "San Francisco, CA",
+      "start_date": "Jan 2020",
+      "end_date": "Jul 2022",
+      "bullets": [
+        {
+          "text": "Architected microservices for payment processing platform handling $100B+ in annual transaction volume",
+          "has_location": false,
+          "has_date": false
+        },
+        {
+          "text": "Reduced payment processing latency from 2s to 200ms through database optimization and caching strategies",
+          "has_location": false,
+          "has_date": false
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Open Source: FastAPI-Users",
+      "location": null,
+      "date": "2021 - Present",
+      "technologies": "Python, FastAPI, SQLAlchemy",
+      "bullets": [
+        {
+          "text": "Maintained authentication library with 10K+ GitHub stars",
+          "has_location": false,
+          "has_date": false
+        },
+        {
+          "text": "Managed community of 50+ contributors across 10 countries",
+          "has_location": false,
+          "has_date": false
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "B.S. Computer Science",
+      "school": "UC Berkeley",
+      "location": "Berkeley, CA",
+      "date": "2019",
+      "details": [
+        {
+          "text": "GPA: 3.9"
+        },
+        {
+          "text": "Honors: Summa Cum Laude"
+        },
+        {
+          "text": "Dean's List all semesters"
+        }
+      ]
+    }
+  ],
+  "leadership": [
+    {
+      "title": "Technical Lead",
+      "organization": "Code2040",
+      "location": "Remote",
+      "date": "2020 - 2022",
+      "bullets": [
+        {
+          "text": "Developed curriculum for teaching 100+ underrepresented minorities in tech",
+          "has_location": false,
+          "has_date": false
+        }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "category": "Languages",
+      "items": [
+        "Python",
+        "Go",
+        "TypeScript",
+        "Java",
+        "SQL",
+        "Rust"
+      ]
+    },
+    {
+      "category": "Frameworks",
+      "items": [
+        "FastAPI",
+        "Django",
+        "React",
+        "Node.js",
+        "gRPC"
+      ]
+    },
+    {
+      "category": "Systems",
+      "items": [
+        "AWS",
+        "Kubernetes",
+        "Docker",
+        "Microservices",
+        "Distributed Systems"
+      ]
+    },
+    {
+      "category": "Databases",
+      "items": [
+        "PostgreSQL",
+        "Redis",
+        "DynamoDB",
+        "Elasticsearch",
+        "Cassandra"
+      ]
+    }
+  ]
+}

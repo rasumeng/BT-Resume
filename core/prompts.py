@@ -37,29 +37,88 @@ INTENSITY: {mode_instructions[mode]}
 REWRITTEN BULLET:"""
 
 
+def resume_polish_prompt(resume_text: str, mode: str = "medium") -> str:
+    """Generate a prompt to polish an entire resume"""
+    mode_instructions = {
+        "light": (
+            "Make minimal changes. Fix weak verbs, tighten wording, and improve clarity. "
+            "Preserve the original structure and content."
+        ),
+        "medium": (
+            "Improve clarity, verb precision, and overall impact. You may restructure sections "
+            "and improve phrasing, but preserve all original accomplishments and content."
+        ),
+        "aggressive": (
+            "Fully optimize for impact and clarity. Sharpen every verb, restructure for better flow, "
+            "and make all accomplishments maximally compelling without inventing experience."
+        ),
+    }
+
+    return f"""You are enhancing an existing resume. Your job is to improve the writing, clarity, and impact of a resume that has ALREADY BEEN WRITTEN BY THE USER based on their real experience.
+
+READ THIS CAREFULLY:
+- You are NOT creating or writing a new resume from scratch
+- You are NOT inventing any experience or accomplishments
+- You are ONLY editing and improving the resume text that is provided below
+- All experience described is real and verified by the user
+- Your job is to make it more polished, clear, and impactful
+
+Here is the existing resume to enhance:
+
+RESUME:
+{resume_text}
+
+ENHANCEMENT RULES:
+1. For each bullet point, use a precise action verb that reflects what was actually done.
+   - Only replace weak or generic verbs (e.g. "helped", "worked on", "assisted", "did", "was responsible for").
+   - Keep strong, specific verbs that accurately describe the work.
+   - Do not reuse the same verb across multiple consecutive bullets.
+2. Improve clarity, conciseness, and impact of all content.
+3. Preserve every technology, tool, skill, accomplishment, and measurable result from the original.
+4. Maintain proper structure: Keep section headings, organization, dates, company names, all as they are.
+5. Do NOT add ANY skills, tools, or experience that are not already in the original resume.
+6. Keep bullet points to 180 characters maximum.
+7. Return the complete enhanced resume in the same structure as the original.
+8. Do NOT explain your changes - just provide the improved resume.
+
+INTENSITY LEVEL: {mode_instructions[mode]}
+
+ENHANCED RESUME (same structure, improved writing):"""
+
+
 def get_changes_summary_prompt(original, polished):
-  return f"""
-You are a resume editor reviewing changes made to a resume.
-Compare the original and polished versions and summarize what changed.
+  return f"""You are comparing an original resume with an enhanced version.
 
-Rules:
-- Return a JSON array of change strings, nothing else
-- Maximum 8 changes
-- Each change should be concise (under 80 characters)
-- Focus on meaningful changes: verb upgrades, added keywords, structural improvements
-- Ignore whitespace or formatting differences
+Identify 5-8 specific meaningful changes organized by resume section.
 
-Return exactly this format:
-["change 1", "change 2", "change 3"]
+For each change, use this format: "In [Section]: Changed 'X' -> 'Y'" or "In [Section]: Changed X to Y"
 
-Original:
+Resume Sections: Work Experience, Education, Skills, Projects, Summary, Certifications, Leadership, Other
+
+Examples of good descriptions:
+- "In Work Experience: Changed 'Managed team' -> 'Led cross-functional team of 8 people'"
+- "In Skills: Restructured bullet to highlight technical expertise first"
+- "In Summary: Added quantifiable achievements and impact metrics"
+- "In Projects: Changed passive 'was developed' -> active 'architected and deployed'"
+- "In Work Experience: Tightened description, removing vague language"
+
+Requirements:
+- Format: "In [Section]: Changed X -> Y" or "In [Section]: [specific improvement]"
+- Identify which resume section was affected
+- Show specific before/after when possible
+- Focus on meaningful improvements only
+- Maximum 8 changes total
+- Return ONLY valid JSON array format: ["In Section: change 1", "In Section: change 2"]
+
+If no significant changes in a section, don't mention it.
+
+Original Resume:
 {original}
 
-Polished:
+Enhanced Resume:
 {polished}
 
-Changes:
-""".strip()
+Return ONLY the JSON array (no other text):""".strip()
 
 def job_tailor_prompt(resume_section: str, job_description: str) -> str:
     return f"""You are a professional resume editor. Rewrite the following resume bullets to better align with the job description.
@@ -127,7 +186,29 @@ def parse_resume_structure_prompt(resume_text: str) -> str:
 RESUME:
 {resume_text}
 
-COMMON RESUME PATTERNS TO RECOGNIZE:
+===== CRITICAL INSTRUCTIONS =====
+
+CRITICAL FIRST STEP - EXTRACT CONTACT INFORMATION:
+At the very top of most resumes is the candidate's contact information. Look for:
+1. NAME: Usually the first line or near the top, typically centered and in larger font
+   - Extract the person's full name (e.g., "John Smith", "Jane Doe")
+2. EMAIL: Look for text with @ (e.g., "john@example.com")
+3. PHONE: Look for patterns like (123) 456-7890, 123-456-7890, +1 123 456 7890
+4. LOCATION: City, State or City, Country (e.g., "San Francisco, CA", "New York, NY")
+5. LINKEDIN: URLs containing "linkedin.com" (extract just URL or extracted text)
+6. GITHUB: URLs containing "github.com" (extract just URL or extracted text)
+7. WEBSITES/PORTFOLIO: Other URLs (portfolio.com, personalwebsite.dev, etc.)
+   - Store these in a "websites" object with keys like: {{"portfolio": "portfolio.com", "website": "example.com"}}
+
+Put ALL contact information in a "contact" object at the top of the JSON. Missing fields should be null.
+
+CRITICAL - ALWAYS EXTRACT EDUCATION:
+NO MATTER HOW MANY OTHER SECTIONS ARE PRESENT, you MUST extract ANY education section found.
+Education typically appears after contact info and before or after skills section.
+Look for "EDUCATION" header and extract ALL education entries found.
+This is mandatory - do not skip education even if other sections take priority.
+
+===== SECTION PATTERNS =====
 
 1. WORK EXPERIENCE / PROFESSIONAL EXPERIENCE / EMPLOYMENT:
    - Typical format: "Title/Position – Company/Organization [Location] [Date Range]"
@@ -149,8 +230,15 @@ COMMON RESUME PATTERNS TO RECOGNIZE:
    - Has: a title, organization name, optional location, optional dates, bullet points
 
 4. EDUCATION:
+   - Section header: Usually labeled "EDUCATION", "EDUCATION & TRAINING", "ACADEMIC BACKGROUND", etc.
    - Typical format: "School/University [Location] [Date]" with degree info on same or next line
-   - Has: degree name, school name, optional location, optional date/graduation date, optional details (GPA, honors, etc.)
+   - Common patterns:
+     * "School Name [Location] [Date]" followed by "Degree | Major | Details"
+     * "Degree – School Name" format
+     * Line 1: School name and date, Line 2: Degree and major
+   - Date may appear on same line as school or on separate line
+   - Can appear early in resume (after contact) or later
+   - ALWAYS extract if present - this is important!
 
 5. SKILLS / TECHNICAL SKILLS / COMPETENCIES:
    - Usually listed as categories with items underneath
@@ -162,6 +250,8 @@ EXTRACTION RULES - DO NOT HARDCODE:
   - "Title/Position – Company" format indicates work experience entry
   - "Name [| Technology]" on its own line often indicates a project
   - "Title – Organization" in a leadership/activity section
+  - "School Name [Location] [Date]" with "Degree | Major" on next line indicates education entry
+  - Section headers like "EDUCATION", "SCHOOL", "ACADEMIC BACKGROUND" mark education sections
   
 - For locations: Extract only if explicitly shown in the HEADER line of an entry (not from bullet content)
   - Locations appear after a dash, comma, or in parentheses near the title/company
@@ -169,7 +259,7 @@ EXTRACTION RULES - DO NOT HARDCODE:
 
 - For dates: Extract only if explicitly shown in the HEADER line (not from bullet content)
   - Typically at the end of an entry header
-  - Format: "Month Year – Month Year" or "Month Year – Present"
+  - Format: "Month Year – Month Year" or "Month Year – Present" or "Month Year" or range formats like "Aug 2025 - May 2027"
 
 - For bullets: Extract EVERY bullet point exactly as written
   - has_location in bullet: true ONLY if the bullet text itself contains a location mention (city, state, address)
@@ -177,10 +267,21 @@ EXTRACTION RULES - DO NOT HARDCODE:
 
 - For company/organization names: Extract exactly as they appear in the resume, do NOT set to null if present
 - For technologies in projects: Extract inline technologies if listed (e.g., "Python", "React", "JavaScript")
+- For education details: Any additional information (GPA, honors, coursework) goes in details array
 
 Return ONLY valid JSON with no explanation, markdown formatting, or code blocks - just pure JSON:
 
 {{
+  "contact": {{
+    "name": "string (required - extract from resume top)",
+    "email": "string or null",
+    "phone": "string or null",
+    "location": "string or null (City, State or City, Country)",
+    "linkedin": "string or null (full URL or extracted text)",
+    "github": "string or null (full URL or extracted text)",
+    "portfolio": "string or null (portfolio/personal website URL)",
+    "websites": {{}} "additional site names to URLs"
+  }},
   "work_experience": [
     {{
       "position": "string",

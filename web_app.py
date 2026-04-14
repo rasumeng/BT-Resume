@@ -12,14 +12,16 @@ import json
 import base64
 from io import BytesIO
 
-from core.input_parser import parse_resume_with_mistral, load_text
+from core.input_parser import parse_resume_with_mistral, load_text, load_pdf
 from core.output_builder import build_resume, clean_bullets
 from core.pdf_generator import generate_pdf
 from core.resume_grader import ResumeGrader
 from core.prompts import (
     bullet_polish_prompt,
     job_tailor_prompt,
-    experience_updater_prompt
+    experience_updater_prompt,
+    resume_polish_prompt,
+    get_changes_summary_prompt
 )
 from core.llm_client import ask_llm
 
@@ -67,6 +69,100 @@ def health():
     return jsonify({"status": "ok", "message": "Resume AI backend is running"})
 
 
+@app.route('/api/model-status', methods=['GET'])
+def model_status():
+    """
+    Check status of Ollama and which models are loaded
+    
+    Returns:
+        - running: Whether Ollama server is running
+        - available_models: List of loaded models
+        - missing_models: List of models that should be loaded but aren't
+        - loaded: Whether all required models are loaded
+    """
+    try:
+        from core.llm_client import ensure_models_loaded
+        status = ensure_models_loaded()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({
+            "error": f"Server error: {str(e)}",
+            "status": "error"
+        }), 500
+
+
+@app.route('/api/pull-model', methods=['POST'])
+def pull_model_endpoint():
+    """
+    Pull (download and load) a specific model
+    
+    Request:
+        - model: Model name (e.g., "mistral:7b", "llama3:8b")
+    
+    Returns:
+        - success: Whether the pull was successful
+        - message: Status message
+    """
+    try:
+        data = request.json or {}
+        model = data.get('model')
+        
+        if not model:
+            return jsonify({"error": "Model name required"}), 400
+        
+        from core.llm_client import pull_model
+        success = pull_model(model)
+        
+        return jsonify({
+            "success": success,
+            "model": model,
+            "message": f"{'Successfully pulled' if success else 'Failed to pull'} model {model}"
+        })
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/resume-status', methods=['GET'])
+def resume_status():
+    """
+    Check if a resume has been parsed and cached
+    
+    Query Parameters:
+        - filename: Resume filename to check
+    
+    Returns:
+        - filename: The resume filename
+        - exists: Whether the resume file exists
+        - parsed: Whether the JSON cache exists (resume has been parsed)
+        - cache_file: Path to the cache file if it exists
+        - cache_time: When the cache was created (unix timestamp)
+    """
+    try:
+        filename = request.args.get('filename')
+        if not filename:
+            return jsonify({"error": "Filename required"}), 400
+        
+        filepath = os.path.join(RESUMES_FOLDER, secure_filename(filename))
+        json_path = filepath + '.json'
+        
+        exists = os.path.exists(filepath)
+        parsed = os.path.exists(json_path)
+        cache_time = None
+        
+        if parsed:
+            cache_time = os.path.getmtime(json_path)
+        
+        return jsonify({
+            "filename": filename,
+            "exists": exists,
+            "parsed": parsed,
+            "cache_file": json_path if parsed else None,
+            "cache_time": cache_time
+        })
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
 @app.route('/api/list-resumes', methods=['GET'])
 def list_resumes():
     """List all saved resumes in the resumes folder"""
@@ -92,6 +188,103 @@ def list_resumes():
         })
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/resumes-folder-info', methods=['GET'])
+def resumes_folder_info():
+    """
+    Get information about the resumes storage folder
+    
+    Returns:
+        - folder_path: Absolute path to the resumes folder
+        - folder_path_display: User-friendly display path
+        - file_count: Number of resume files (excluding JSON cache files)
+        - total_size: Total size of all resumes in bytes
+        - total_size_mb: Total size in megabytes
+        - files: List of all files with their details
+    """
+    try:
+        import platform
+        
+        file_list = []
+        total_size = 0
+        file_count = 0
+        
+        for filename in os.listdir(RESUMES_FOLDER):
+            filepath = os.path.join(RESUMES_FOLDER, filename)
+            
+            # Only count actual resume files, not JSON caches
+            if filename.endswith(('.pdf', '.txt')):
+                file_count += 1
+                file_size = os.path.getsize(filepath)
+                total_size += file_size
+                mod_time = os.path.getmtime(filepath)
+                
+                file_list.append({
+                    "name": filename,
+                    "size_bytes": file_size,
+                    "size_kb": round(file_size / 1024, 2),
+                    "modified_time": mod_time,
+                    "type": "pdf" if filename.endswith('.pdf') else "txt"
+                })
+        
+        # Sort by name
+        file_list.sort(key=lambda x: x['name'])
+        
+        return jsonify({
+            "status": "success",
+            "folder_path": RESUMES_FOLDER,
+            "folder_path_display": RESUMES_FOLDER.replace("\\", "/"),
+            "file_count": file_count,
+            "total_size_bytes": total_size,
+            "total_size_mb": round(total_size / (1024 * 1024), 2),
+            "files": file_list,
+            "os": platform.system()
+        })
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/open-resumes-folder', methods=['POST'])
+def open_resumes_folder():
+    """
+    Open the resumes folder in the system file explorer (Windows/Mac/Linux)
+    
+    Returns:
+        - success: Whether the folder was opened
+        - message: Status message
+        - folder_path: The folder path that was opened
+    """
+    try:
+        import subprocess
+        import platform
+        
+        # Normalize path for display
+        folder_path = os.path.abspath(RESUMES_FOLDER)
+        
+        system = platform.system()
+        
+        if system == 'Windows':
+            # Open folder in Windows Explorer
+            subprocess.Popen(f'explorer "{folder_path}"')
+        elif system == 'Darwin':
+            # Open folder in Finder (macOS)
+            subprocess.Popen(['open', folder_path])
+        else:
+            # Open folder in file manager (Linux)
+            subprocess.Popen(['xdg-open', folder_path])
+        
+        return jsonify({
+            "success": True,
+            "message": f"Opened resumes folder in {system} file explorer",
+            "folder_path": folder_path
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Could not open folder: {str(e)}",
+            "folder_path": os.path.abspath(RESUMES_FOLDER)
+        }), 500
 
 
 @app.route('/api/get-resume', methods=['GET'])
@@ -125,6 +318,166 @@ def get_resume():
             return jsonify({"error": "Unsupported file type"}), 400
     
     except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/get-resume-text', methods=['GET'])
+def get_resume_text():
+    """
+    Extract text content from a resume file (PDF or TXT)
+    
+    Query Parameters:
+        - filename: Resume filename
+    
+    Returns:
+        JSON with extracted text content
+    """
+    try:
+        filename = request.args.get('filename')
+        if not filename:
+            return jsonify({"error": "Filename required"}), 400
+        
+        filepath = os.path.join(RESUMES_FOLDER, secure_filename(filename))
+        
+        if not os.path.exists(filepath):
+            return jsonify({"error": "Resume not found"}), 404
+        
+        file_ext = os.path.splitext(filepath)[1].lower()
+        
+        try:
+            if file_ext == '.pdf':
+                text_content = load_pdf(filepath)
+            elif file_ext == '.txt':
+                text_content = load_text(filepath)
+            else:
+                return jsonify({"error": "Unsupported file type"}), 400
+            
+            return jsonify({"content": text_content, "filename": filename}), 200
+        except Exception as e:
+            return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
+    
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/delete-resume', methods=['DELETE'])
+def delete_resume():
+    """
+    Delete a resume file from disk
+    
+    Query Parameters:
+        - filename: Resume filename to delete
+    
+    Response:
+        - status: success or error
+    """
+    try:
+        filename = request.args.get('filename')
+        if not filename:
+            return jsonify({"error": "Filename required"}), 400
+        
+        filepath = os.path.join(RESUMES_FOLDER, secure_filename(filename))
+        
+        if not os.path.exists(filepath):
+            return jsonify({"error": "Resume not found"}), 404
+        
+        # Delete the main file
+        os.remove(filepath)
+        
+        # Also delete cached JSON version if it exists
+        json_path = filepath + '.json'
+        if os.path.exists(json_path):
+            os.remove(json_path)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Resume '{filename}' deleted successfully"
+        })
+    
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/save-resume-pdf', methods=['POST'])
+def save_resume_pdf():
+    """
+    Save resume content as a PDF file
+    
+    Request:
+        - filename: Desired PDF filename (without extension)
+        - resume_text: Plain text resume content
+    
+    Response:
+        - filename: Saved filename (with .pdf extension)
+        - status: success or error
+    """
+    try:
+        data = request.json or {}
+        filename = data.get('filename')
+        resume_text = data.get('resume_text')
+        
+        if not filename or not filename.strip():
+            return jsonify({"error": "Filename required"}), 400
+        
+        if not resume_text or not resume_text.strip():
+            return jsonify({"error": "Resume content required"}), 400
+        
+        # Sanitize filename and ensure .pdf extension
+        clean_filename = secure_filename(filename.strip())
+        if not clean_filename.endswith('.pdf'):
+            clean_filename = clean_filename + '.pdf'
+        
+        # Check if file already exists
+        filepath = os.path.join(RESUMES_FOLDER, clean_filename)
+        if os.path.exists(filepath):
+            return jsonify({"error": "File already exists"}), 400
+        
+        print(f"\n{'='*60}")
+        print(f"💾 SAVING RESUME AS PDF: {clean_filename}")
+        print(f"{'='*60}")
+        
+        # Write text to temp file with explicit UTF-8 encoding
+        temp_txt = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', encoding='utf-8')
+        temp_txt.write(resume_text)
+        temp_txt.close()
+        print(f"✓ Temp file created: {temp_txt.name}")
+        
+        try:
+            # Parse the resume properly with Mistral
+            print(f"🤖 Parsing resume with LLM...")
+            sections = parse_resume_with_mistral(temp_txt.name)
+            if sections is None:
+                raise Exception("Failed to parse resume - Mistral returned None")
+            print(f"✓ Successfully parsed into {len(sections)} sections")
+            
+            # Generate PDF from parsed sections
+            print(f"📄 Generating PDF file...")
+            generate_pdf(sections, filepath)
+            print(f"✓ PDF generated: {filepath}")
+            
+            # Cache the parsed sections
+            json_path = filepath + '.json'
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(sections, f, ensure_ascii=False, indent=2)
+            print(f"✓ Sections cached to JSON")
+            
+            print(f"✅ Resume saved successfully as {clean_filename}\n")
+            return jsonify({
+                "status": "success",
+                "filename": clean_filename,
+                "message": f"Resume saved as PDF: {clean_filename}"
+            })
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_txt.name):
+                os.remove(temp_txt.name)
+                print(f"✓ Temp file cleaned up")
+    
+    except Exception as e:
+        print(f"\n❌ ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print(f"{'='*60}\n")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
@@ -367,16 +720,26 @@ def grade_resume():
             if not os.path.exists(filepath):
                 return jsonify({"error": "Resume not found"}), 400
             
+            print(f"\n🔍 Grading request for: {filename}")
+            
             # Check cache first
             json_path = filepath + '.json'
             if os.path.exists(json_path):
+                print(f"✓ Found cached JSON for {filename}")
                 with open(json_path, 'r') as f:
                     sections = json.load(f)
             else:
-                sections = parse_resume_with_mistral(filepath)
+                print(f"⏳ No cache found, parsing resume...")
+                try:
+                    sections = parse_resume_with_mistral(filepath)
+                except Exception as parse_error:
+                    error_msg = str(parse_error)
+                    print(f"❌ Parsing failed: {error_msg}")
+                    return jsonify({"error": f"Failed to parse resume: {error_msg}"}), 500
                 if sections is None:
-                    return jsonify({"error": "Failed to parse resume"}), 500
+                    return jsonify({"error": "Failed to parse resume (no sections returned)"}), 500
                 # Cache it
+                print(f"💾 Caching parsed resume to {json_path}")
                 with open(json_path, 'w') as f:
                     json.dump(sections, f)
             
@@ -385,18 +748,27 @@ def grade_resume():
             return jsonify({"error": "Resume file or text required"}), 400
         
         grader = ResumeGrader()
-        scores = grader.grade(resume_text)
+        try:
+            print(f"🤖 Sending to grader (Mistral:7b)...")
+            scores = grader.grade(resume_text)
+        except Exception as grade_error:
+            # Re-raise to be caught by outer exception handler
+            raise grade_error
         
         if scores is None:
-            return jsonify({"error": "Failed to grade resume"}), 500
+            print(f"❌ Grader returned no scores")
+            return jsonify({"error": "Failed to grade resume (no scores returned)"}), 500
         
+        print(f"✓ Grading complete - Overall score: {scores.get('overall', 'N/A')}")
         return jsonify({
             "status": "success",
             "scores": scores
         })
     
     except Exception as e:
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+        error_msg = str(e)
+        print(f"Grade resume error: {error_msg}")
+        return jsonify({"error": error_msg}), 500
 
 
 
@@ -436,6 +808,85 @@ def polish_bullets():
     
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/api/polish-resume', methods=['POST'])
+def polish_resume():
+    """
+    Polish an entire resume - enhance wording, verb precision, and structure
+    
+    Request:
+        - resume_content: Full resume text (string)
+        - intensity: Polishing intensity level (light, medium, aggressive) - default: medium
+    
+    Response:
+        - polished_resume: Enhanced resume text
+        - changes: Array of specific improvements made (up to 8)
+        - success: Boolean indicating success
+    """
+    try:
+        data = request.json or {}
+        resume_content = data.get('resume_content')
+        intensity = data.get('intensity', 'medium')
+        
+        # Validate intensity
+        valid_intensities = ['light', 'medium', 'aggressive']
+        if intensity not in valid_intensities:
+            intensity = 'medium'
+        
+        if not resume_content or not resume_content.strip():
+            return jsonify({
+                "error": "Resume content is required",
+                "success": False
+            }), 400
+        
+        # Polish the entire resume with selected intensity
+        prompt = resume_polish_prompt(resume_content, mode=intensity)
+        polished_resume = ask_llm(prompt, task_type="polish")
+        
+        if not polished_resume:
+            return jsonify({
+                "error": "Failed to polish resume",
+                "success": False
+            }), 500
+        
+        # Generate a summary of changes made
+        changes_prompt = get_changes_summary_prompt(resume_content, polished_resume)
+        changes_response = ask_llm(changes_prompt, task_type="analyze")
+        
+        changes = []
+        if changes_response:
+            try:
+                # Try to parse JSON response
+                import json as json_lib
+                # Extract JSON array from response
+                json_str = changes_response.strip()
+                if json_str.startswith('['):
+                    changes = json_lib.loads(json_str)
+                else:
+                    # If not valid JSON, use response as single change
+                    changes = [changes_response.strip()]
+            except:
+                # If parsing fails, create a generic change message
+                changes = ["Resume was enhanced with improved wording and professional language"]
+        
+        # Ensure we have an array and limit to 8 changes
+        if not isinstance(changes, list):
+            changes = [str(changes)] if changes else []
+        changes = changes[:8]
+        
+        return jsonify({
+            "status": "success",
+            "success": True,
+            "polished_resume": polished_resume.strip(),
+            "changes": changes
+        })
+    
+    except Exception as e:
+        return jsonify({
+            "error": f"Server error: {str(e)}",
+            "success": False
+        }), 500
 
 
 @app.route('/api/tailor-resume', methods=['POST'])

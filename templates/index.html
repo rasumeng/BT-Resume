@@ -8,32 +8,14 @@
 <!-- ================================================================ -->
 <section id="panel-my-resumes" class="panel active">
     <style>
-        .modern-resumes-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            min-height: calc(100vh - 180px);
-            padding: 20px;
-        }
-
-        /* ══════════════ LEFT PANEL: RESUME LIST ══════════════ */
-        .resume-list-panel {
-            display: flex;
-            flex-direction: column;
-            background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
-            border: 1px solid var(--dark-4);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .panel-header {
-            padding: 20px;
+        /* ══════════════ SHARED BASE STYLES ══════════════ */
+        .panel-header, .preview-header, .grading-header, .polish-panel-header, .tailor-panel-header {
+            padding: 18px 20px;
             background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
-            border-bottom: 2px solid var(--gold);
+            border-bottom: 1px solid var(--dark-4);
         }
 
-        .panel-header h3 {
+        .panel-header h3, .preview-header h3, .grading-header h3, .polish-panel-header h3, .tailor-panel-header h3 {
             font-size: 16px;
             font-weight: 600;
             color: var(--gold);
@@ -41,6 +23,98 @@
             letter-spacing: 1px;
             margin: 0;
         }
+
+        .placeholder-center, .preview-placeholder, .polish-placeholder, .tailor-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            text-align: center;
+            flex-direction: column;
+        }
+
+        .placeholder-icon, .preview-placeholder-icon, .polish-placeholder-icon, .tailor-placeholder-icon, .empty-state-icon, .polish-empty-icon, .tailor-empty-icon, .grading-empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .btn-primary, .file-input-label, .btn-grade, .polish-btn, .tailor-btn-primary, .index-experience-btn {
+            background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%);
+            color: var(--dark);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover, .file-input-label:hover, .btn-grade:hover, .polish-btn:hover, .tailor-btn-primary:hover, .index-experience-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(201, 168, 76, 0.3);
+        }
+
+        .btn-secondary, .btn-parse, .btn-download, .tailor-secondary-btn {
+            background: rgba(201, 168, 76, 0.15);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover, .btn-parse:hover, .btn-download:hover, .tailor-secondary-btn:hover {
+            background: var(--gold);
+            color: var(--dark);
+        }
+
+        .scrollbar-style::-webkit-scrollbar, .resume-list::-webkit-scrollbar, .polish-list::-webkit-scrollbar, .tailor-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar-style::-webkit-scrollbar-track, .resume-list::-webkit-scrollbar-track, .polish-list::-webkit-scrollbar-track, .tailor-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scrollbar-style::-webkit-scrollbar-thumb, .resume-list::-webkit-scrollbar-thumb, .polish-list::-webkit-scrollbar-thumb, .tailor-list::-webkit-scrollbar-thumb {
+            background: var(--dark-4);
+            border-radius: 3px;
+        }
+
+        .modern-resumes-container {
+            display: grid;
+            grid-template-columns: 30% 70%;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+            align-items: start;
+        }
+
+        .resumes-left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow: hidden;
+            min-height: 0;
+            max-height: calc(100vh - 280px);
+        }
+
+        /* ══════════════ LEFT PANEL: RESUME LIST ══════════════ */
+        .resume-list-panel {
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--dark) 100%);
+            border: 1px solid var(--dark-4);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* .panel-header styles moved to shared base styles */
 
         .panel-header p {
             font-size: 12px;
@@ -67,58 +141,26 @@
         .file-input-label {
             display: block;
             padding: 12px 16px;
-            background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%);
-            color: var(--dark);
+            color: #000;
             text-align: center;
-            border-radius: 8px;
-            font-weight: 600;
             font-size: 13px;
-            cursor: pointer;
-            transition: all 0.3s ease;
             margin-bottom: 8px;
-        }
-
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(201, 168, 76, 0.3);
         }
 
         .btn-parse {
             width: 100%;
             padding: 10px 14px;
-            background: rgba(201, 168, 76, 0.15);
-            border: 1px solid var(--gold);
-            color: var(--gold);
-            border-radius: 8px;
             font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-parse:hover {
-            background: var(--gold);
-            color: var(--dark);
         }
 
         .resume-list {
             flex: 1;
             overflow-y: auto;
             padding: 12px;
+            max-height: 240px;
         }
 
-        .resume-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .resume-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .resume-list::-webkit-scrollbar-thumb {
-            background: var(--dark-4);
-            border-radius: 3px;
-        }
+        /* Scrollbar styles moved to shared base styles */
 
         .resume-card {
             padding: 14px;
@@ -129,6 +171,10 @@
             transition: all 0.3s ease;
             margin-bottom: 10px;
             position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 8px;
         }
 
         .resume-card:hover {
@@ -142,6 +188,12 @@
             background: linear-gradient(135deg, rgba(201, 168, 76, 0.2) 0%, rgba(201, 168, 76, 0.1) 100%);
             border-color: var(--gold);
             box-shadow: 0 4px 16px rgba(201, 168, 76, 0.25);
+        }
+
+        .resume-card-content {
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
         }
 
         .resume-card-title {
@@ -161,6 +213,28 @@
             justify-content: space-between;
         }
 
+        .resume-card-delete {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .resume-card-delete:hover {
+            background: rgba(220, 100, 100, 0.15);
+            color: #DC6464;
+        }
+
         .empty-state {
             display: flex;
             flex-direction: column;
@@ -171,55 +245,31 @@
             text-align: center;
         }
 
-        .empty-state-icon {
-            font-size: 36px;
-            margin-bottom: 12px;
-            opacity: 0.5;
-        }
-
-        /* ══════════════ CENTER PANEL: RESUME PREVIEW ══════════════ */
-        .resume-preview-panel {
+        /* ══════════════ RIGHT CONTENT PANEL ══════════════ */
+        .resume-content-panel {
             display: flex;
             flex-direction: column;
+            gap: 0;
             background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
             border: 1px solid var(--dark-4);
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             flex: 1;
-            min-height: 500px;
+            max-height: calc(100vh - 200px);
         }
 
-        .preview-header {
-            padding: 20px;
-            background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
-            border-bottom: 2px solid var(--gold);
-        }
-
-        .preview-header h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 0;
-        }
+        /* .preview-header styles moved to shared base styles */
 
         .preview-content {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            background: var(--dark-2);
+            background: transparent;
         }
 
         .preview-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
             height: 100%;
-            color: var(--text-dim);
-            text-align: center;
-            flex-direction: column;
         }
 
         .preview-placeholder-icon {
@@ -240,34 +290,28 @@
         .grading-panel {
             display: flex;
             flex-direction: column;
-            background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
-            border: 1px solid var(--dark-4);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            flex: 0;
+            min-height: 300px;
+            max-height: 400px;
         }
 
         .grading-header {
-            padding: 20px;
-            background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
-            border-bottom: 2px solid var(--gold);
-        }
-
-        .grading-header h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 0;
+            border-top: none;
         }
 
         .grading-content {
-            flex: 1;
+            height: auto;
             overflow-y: auto;
             padding: 20px;
             display: flex;
             flex-direction: column;
+            background: transparent;
+            flex: 1;
+            min-height: 250px;
         }
 
         .score-section {
@@ -315,6 +359,13 @@
             font-family: 'Courier New', monospace;
         }
 
+        .score-item-value::after {
+            content: "/10";
+            font-size: 16px;
+            margin-left: 2px;
+            opacity: 0.8;
+        }
+
         .score-item-value.low {
             color: #e74c3c;
         }
@@ -336,45 +387,22 @@
 
         .btn-grade {
             padding: 14px 20px;
-            background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%);
-            color: var(--dark);
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
             font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-grade:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(201, 168, 76, 0.3);
         }
 
         .btn-download {
             padding: 12px 20px;
-            background: transparent;
-            color: var(--gold);
-            border: 1px solid var(--gold);
-            border-radius: 8px;
-            font-weight: 600;
             font-size: 13px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-download:hover {
-            background: rgba(201, 168, 76, 0.1);
         }
 
         .grading-empty {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
+            padding: 20px;  /* Reduce from 40px if needed */
             color: var(--text-dim);
+            text-align: center;
+            white-space: nowrap;  /* Prevent wrapping */
         }
 
         .grading-empty-icon {
@@ -390,6 +418,7 @@
 
         @media (max-width: 1400px) {
             .modern-resumes-container {
+                grid-template-columns: 30% 70%;
                 gap: 16px;
                 padding: 16px;
             }
@@ -405,64 +434,90 @@
                 min-height: 400px;
             }
         }
+
+        .polish-resume-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+            padding: 20px;
+            overflow: hidden;
+        }
     </style>
 
+    <div class="polish-resume-container">
+        <div style="margin-bottom: 8px;">
+            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">My Resumes</h1>
+            <p style="font-size: 13px; color: var(--text-dim); margin: 0;">Select a resume to view and grade</p>
+        </div>
+
     <div class="modern-resumes-container">
-        <!-- LEFT PANEL: RESUME LIST -->
-        <div class="resume-list-panel">
-            <div class="panel-header">
-                <h3>📄 Your Resumes</h3>
-                <p>Select to preview</p>
-            </div>
+        <!-- LEFT PANEL: RESUME LIST + GRADING -->
+        <div class="resumes-left-panel">
+            <!-- RESUME LIST PANEL -->
+            <div class="resume-list-panel">
+                <div class="panel-header">
+                    <h3>📄 Your Resumes</h3>
+                    <p>Select to preview</p>
+                </div>
 
-            <div class="resume-list" id="resumeList">
-                <div class="empty-state">
-                    <div class="empty-state-icon">📋</div>
-                    <div>No resumes yet</div>
-                    <div style="font-size: 11px; margin-top: 4px;">Upload to get started</div>
+                <div class="resume-list" id="resumeList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>No resumes yet</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Upload to get started</div>
+                    </div>
+                </div>
+
+                <div class="upload-section">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="resumeFile" accept=".pdf,.txt" onchange="handleResumeUpload()">
+                        <label for="resumeFile" class="file-input-label" style="color: #000;">+ Add Resume</label>
+                    </div>
+                    <button class="btn-parse" onclick="showResumeFolderInfo()" style="margin-top: 8px; background: rgba(100, 180, 200, 0.15); border-color: rgba(100, 180, 200, 0.5); color: rgba(100, 180, 200, 0.8);">
+                        📁 Manage Folder
+                    </button>
+                    <div id="uploadStatus" style="display: none; margin-top: 12px;"></div>
                 </div>
             </div>
 
-            <div class="upload-section">
-                <div class="file-input-wrapper">
-                    <input type="file" id="resumeFile" accept=".pdf,.txt" onchange="handleResumeUpload()">
-                    <label for="resumeFile" class="file-input-label">+ Add Resume</label>
+            <!-- GRADING SECTION (MOVED TO LEFT) -->
+            <div class="grading-panel" style="display: flex; background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%); border: 1px solid var(--dark-4); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); flex: 1; flex-direction: column;">
+                <div class="grading-header">
+                    <h3>⭐ Grade & Score</h3>
+                </div>
+
+                <div class="grading-content" id="gradingContent">
+                    <div class="grading-empty">
+                        <div class="grading-empty-icon">📊</div>
+                        <div>No scores yet</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Grade a resume to see results</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons" style="display: none;" id="actionButtons">
+                    <button class="btn-grade" onclick="gradeSelectedResume()">Grade Resume</button>
                 </div>
             </div>
         </div>
 
-        <!-- CENTER PANEL: RESUME PREVIEW -->
-        <div class="resume-preview-panel">
-            <div class="preview-header">
-                <h3>👁️ Preview</h3>
-            </div>
+        <!-- RIGHT PANEL: PREVIEW ONLY -->
+        <div class="resume-content-panel">
+            <!-- PREVIEW SECTION (TOP) -->
+            <div class="resume-preview-panel" style="border: none; border-radius: 0; box-shadow: none; background: transparent; border-bottom: none;">
+                <div class="preview-header">
+                    <h3>👁️ Preview</h3>
+                </div>
 
-            <div class="preview-content" id="resumePreview">
-                <div class="preview-placeholder">
-                    <div class="preview-placeholder-icon">👼</div>
-                    <div>Select a resume to preview</div>
+                <div class="preview-content" id="resumePreview">
+                    <div class="preview-placeholder">
+                        <div class="preview-placeholder-icon">👼</div>
+                        <div>Select a resume to preview</div>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- RIGHT PANEL: GRADING & SCORES -->
-        <div class="grading-panel">
-            <div class="grading-header">
-                <h3>⭐ Grade & Score</h3>
-            </div>
-
-            <div class="grading-content" id="gradingContent">
-                <div class="grading-empty">
-                    <div class="grading-empty-icon">📊</div>
-                    <div>No scores yet</div>
-                    <div style="font-size: 11px; margin-top: 4px;">Grade a resume to see results</div>
-                </div>
-            </div>
-
-            <div class="action-buttons" style="display: none;" id="actionButtons">
-                <button class="btn-grade" onclick="gradeSelectedResume()">Grade Resume</button>
-            </div>
-        </div>
+    </div>
     </div>
 </section>
 
@@ -471,17 +526,130 @@
 <!-- ================================================================ -->
 <section id="panel-bullet-polish" class="panel">
     <style>
-        .bullet-polish-container {
+        .polish-resume-container {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            min-height: calc(100vh - 180px);
+            flex: 1;
             padding: 20px;
+            overflow: hidden;
         }
 
-        .modern-panel {
+        .polish-grid {
+            display: grid;
+            grid-template-columns: 30% 70%;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .polish-compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            border-bottom: 2px solid var(--dark-4);
+        }
+
+        .polish-original-column,
+        .polish-polished-column {
             display: flex;
             flex-direction: column;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: none;
+        }
+
+        .polish-original-column {
+            border-right: 1px solid var(--dark-4);
+        }
+
+        .polish-list-panel {
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--dark) 100%);
+            border: 1px solid var(--dark-4);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            height: fit-content;
+            align-self: start;
+        }
+
+        /* .polish-panel-header styles moved to shared base styles */
+        .polish-compare-grid .polish-panel-header {
+            border-bottom: none;
+        }
+
+        .polish-original-column .polish-panel-header {
+            border-right: 1px solid var(--dark-4);
+        }
+
+        .polish-list {
+            max-height: 220px;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* Scrollbar styles moved to shared base styles */
+
+        .polish-card {
+            padding: 14px;
+            background: var(--dark-2);
+            border: 1px solid var(--dark-4);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .polish-card:hover {
+            background: var(--dark-3);
+            border-color: var(--gold);
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(201, 168, 76, 0.15);
+        }
+
+        .polish-card.active {
+            background: linear-gradient(135deg, rgba(201, 168, 76, 0.2) 0%, rgba(201, 168, 76, 0.1) 100%);
+            border-color: var(--gold);
+            box-shadow: 0 4px 16px rgba(201, 168, 76, 0.25);
+        }
+
+        .polish-card-title {
+            font-weight: 600;
+            color: var(--cream);
+            font-size: 13px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .polish-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            text-align: center;
+        }
+
+        .polish-content-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
             background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
             border: 1px solid var(--dark-4);
             border-radius: 12px;
@@ -489,159 +657,242 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
-        .modern-panel-header {
-            padding: 20px;
-            background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
-            border-bottom: 2px solid var(--gold);
+        .polish-controls-row {
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--dark-4);
+            border-radius: 0;
+            padding: 16px 12px;
+            box-shadow: none;
+            margin-top: auto;
         }
 
-        .modern-panel-header h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 0;
+        .polish-scroll-wrapper {
+            flex: 1;
+            overflow-y: auto;
         }
 
-        .modern-panel-content {
+        .polish-content {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            background: var(--dark-2);
+            background: transparent;
+            min-height: 300px;
         }
 
-        .bullet-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            height: calc(100vh - 200px);
+        .resume-text {
+            font-size: 12px;
+            line-height: 1.8;
+            color: var(--text-muted);
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
-        .bullet-column {
-            display: flex;
-            flex-direction: column;
+        .polish-placeholder {
+            height: 100%;
         }
 
-        #bulletsInput {
-            background-color: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--dark-4);
-            color: var(--cream);
+        .polish-placeholder-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .changes-section {
+            margin-top: 20px;
             padding: 16px;
-            border-radius: 8px;
-            resize: none;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        #bulletsInput:focus {
-            outline: none;
-            border-color: var(--gold);
-            box-shadow: 0 0 8px rgba(201, 168, 76, 0.2);
-        }
-
-        #polishedBulletsList {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .polished-bullet {
             background: rgba(201, 168, 76, 0.08);
             border: 1px solid rgba(201, 168, 76, 0.2);
             border-left: 3px solid var(--gold);
-            padding: 12px 14px;
-            border-radius: 6px;
-            color: var(--cream);
-            transition: all 0.3s ease;
-        }
-
-        .polished-bullet:hover {
-            background: rgba(201, 168, 76, 0.12);
-            border-color: rgba(201, 168, 76, 0.4);
-            box-shadow: 0 3px 12px rgba(201, 168, 76, 0.15);
-            transform: translateX(4px);
-        }
-
-        #bulletStatus {
-            margin-bottom: 16px;
-        }
-
-        .status-box {
-            padding: 12px 16px;
-            background: rgba(201, 168, 76, 0.1);
-            border: 1px solid rgba(201, 168, 76, 0.3);
             border-radius: 8px;
-            color: var(--gold);
+        }
+
+        .changes-title {
             font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .change-item {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            line-height: 1.5;
         }
 
         .polish-btn {
             width: 100%;
             padding: 12px 16px;
-            background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%);
-            color: var(--dark);
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
             font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
             margin-top: 16px;
         }
 
-        .polish-btn:hover {
+        .polish-intensity-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--dark-3);
+            color: var(--text-muted);
+            border: 1px solid var(--dark-4);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .polish-intensity-btn:hover {
+            background: var(--dark-4);
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .polish-intensity-btn.active {
+            background: var(--gold);
+            color: var(--dark);
+            border-color: var(--gold);
+        }
+
+        .polish-action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .polish-btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(201, 168, 76, 0.3);
         }
+
+        .polish-btn-secondary:hover {
+            background: rgba(201, 168, 76, 0.1);
+        }
+
+        .polish-changes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 20px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+        }
+
+        .polish-change-item {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.7;
+            padding: 8px 0;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .polish-change-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--gold);
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        @media (max-width: 1400px) {
+            .polish-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .polish-compare-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0;
+                height: auto;
+            }
+
+            .polish-original-column {
+                border-right: 1px solid var(--dark-4);
+            }
+        }
     </style>
 
-    <div class="bullet-polish-container">
+    <div class="polish-resume-container">
         <div style="margin-bottom: 8px;">
-            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">Bullet Polish</h1>
-            <p style="font-size: 13px; color: var(--text-dim); margin: 0;">Transform basic bullet points into compelling achievements</p>
+            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">Polish Resume</h1>
+            <p style="font-size: 13px; color: var(--text-dim); margin: 0;">Select a resume to polish and enhance with AI-powered improvements</p>
         </div>
 
-        <div class="bullet-grid">
-            <div class="bullet-column">
-                <div class="modern-panel">
-                    <div class="modern-panel-header">
-                        <h3>📝 Original Bullets</h3>
-                    </div>
-                    <div class="modern-panel-content" style="flex: 1;">
-                        <textarea id="bulletsInput" 
-                                  placeholder="- Managed team of developers&#10;- Implemented new features&#10;- Improved performance by 20%"
-                                  style="width: 100%; height: 100%; border: none; background: transparent; color: var(--cream); resize: none; font-family: 'Courier New', monospace; font-size: 13px; padding: 0;"></textarea>
+        <div class="polish-grid">
+            <!-- INPUT PANEL (LEFT) -->
+            <div class="polish-list-panel">
+                <div class="polish-panel-header">
+                    <h3>📄 Your Resumes</h3>
+                </div>
+
+                <div class="polish-list" id="polishResumeList">
+                    <div class="polish-empty-state">
+                        <div class="polish-empty-icon">📋</div>
+                        <div>No resumes yet</div>
                     </div>
                 </div>
-                <button class="polish-btn" onclick="polishBullets()">✨ Polish Bullets</button>
+
+                <!-- CONTROLS SECTION (MOVED TO LEFT) -->
+                <div class="polish-controls-row">
+                    <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px;">Polishing Intensity:</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="polish-intensity-btn" data-intensity="light" onclick="selectPolishIntensity('light')">
+                            🟢 Light
+                        </button>
+                        <button class="polish-intensity-btn active" data-intensity="medium" onclick="selectPolishIntensity('medium')">
+                            🟡 Medium
+                        </button>
+                        <button class="polish-intensity-btn" data-intensity="aggressive" onclick="selectPolishIntensity('aggressive')">
+                            🔴 Aggressive
+                        </button>
+                        <button class="polish-btn" onclick="polishResume()" id="polishBtn" style="display: none;">✨ Polish Resume</button>
+                    </div>
+                </div>
             </div>
 
-            <div class="bullet-column">
-                <div id="bulletStatus"></div>
-                <div id="bulletResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
-                    <div class="modern-panel" style="flex: 1;">
-                        <div class="modern-panel-header">
-                            <h3>💫 Polished Results</h3>
+            <!-- COMPARISON PANEL (RIGHT) -->
+            <div class="polish-content-panel">
+                <!-- TWO-COLUMN LAYOUT -->
+                <div class="polish-compare-grid">
+                    <!-- ORIGINAL PREVIEW (LEFT) -->
+                    <div class="polish-original-column">
+                        <div class="polish-panel-header">
+                            <h3>📄 Original Resume</h3>
                         </div>
-                        <div class="modern-panel-content" style="flex: 1; overflow-y: auto;">
-                            <div id="polishedBulletsList"></div>
+                        <div class="polish-content" id="polishOriginalPreview">
+                            <div class="polish-placeholder">
+                                <div class="polish-placeholder-icon">👼</div>
+                                <div>Select a resume to preview</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- POLISHED PREVIEW (RIGHT) -->
+                    <div class="polish-polished-column">
+                        <div class="polish-panel-header">
+                            <h3>✨ Polished Resume</h3>
+                        </div>
+                        <div class="polish-content" id="polishPolishedPreview">
+                            <div class="polish-placeholder">
+                                <div class="polish-placeholder-icon">✨</div>
+                                <div>Click "Polish Resume" to see improvements</div>
+                            </div>
+                        </div>
+                        <div id="polishActionButtons" class="polish-action-buttons" style="display: none; padding: 12px; background: rgba(201, 168, 76, 0.05); border-top: 1px solid rgba(201, 168, 76, 0.2); gap: 10px;">
+                            <button class="polish-btn-primary" onclick="replacePolishedResume()" title="Replace original resume with polished version" style="flex: 1; padding: 10px; background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%); color: var(--dark); border: none; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.3s ease;">💾 Replace Original</button>
+                            <button class="polish-btn-secondary" onclick="savePolishedResumeAs()" title="Save polished resume with a new name" style="flex: 1; padding: 10px; background: transparent; color: var(--gold); border: 1px solid var(--gold); border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.3s ease;">💾 Save As</button>
                         </div>
                     </div>
                 </div>
-                <div id="bulletPlaceholder" style="flex: 1; display: flex; flex-direction: column;">
-                    <div class="modern-panel" style="flex: 1; display: flex; align-items: center; justify-content: center;">
-                        <div style="text-align: center; color: var(--text-dim);">
-                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;">✨</div>
-                            <p>Enter your bullet points and click "Polish Bullets"</p>
-                            <p style="font-size: 12px; margin-top: 8px;">Your improved bullets will appear here</p>
-                        </div>
+
+                <!-- CHANGES SUMMARY (BOTTOM, FULL WIDTH) -->
+                <div id="polishChangesSection" style="background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%); border: 1px solid var(--dark-4); border-radius: 12px; padding: 0; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); overflow: hidden;">
+                    <div class="polish-panel-header">
+                        <h3>📋 Changes Made</h3>
                     </div>
+                    <div id="polishChangesList" class="polish-changes-list" style="padding: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8;">Select a resume and click "Polish Resume" to see what improvements AI will make.</div>
                 </div>
             </div>
         </div>
@@ -653,7 +904,7 @@
 <!-- ================================================================ -->
 <section id="panel-job-tailor" class="panel">
     <style>
-        .job-tailor-container {
+        .tailor-resume-container {
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -663,159 +914,332 @@
 
         .tailor-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 30% 70%;
             gap: 20px;
-            height: calc(100vh - 200px);
+            height: auto;
         }
 
-        .tailor-column {
+        .tailor-input-panel {
             display: flex;
             flex-direction: column;
-        }
-
-        #jobInput {
-            background-color: rgba(0, 0, 0, 0.2);
+            background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
             border: 1px solid var(--dark-4);
-            color: var(--cream);
-            padding: 16px;
-            border-radius: 8px;
-            resize: none;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            height: fit-content;
+            align-self: start;
         }
 
-        #jobInput:focus {
+        /* .tailor-panel-header styles moved to shared base styles */
+
+        .tailor-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* Scrollbar styles moved to shared base styles */
+
+        .tailor-resume-card {
+            padding: 14px;
+            background: var(--dark-2);
+            border: 1px solid var(--dark-4);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .tailor-resume-card:hover {
+            background: var(--dark-3);
+            border-color: var(--gold);
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(201, 168, 76, 0.15);
+        }
+
+        .tailor-resume-card.active {
+            background: linear-gradient(135deg, rgba(201, 168, 76, 0.2) 0%, rgba(201, 168, 76, 0.1) 100%);
+            border-color: var(--gold);
+            box-shadow: 0 4px 16px rgba(201, 168, 76, 0.25);
+        }
+
+        .tailor-resume-card-title {
+            font-weight: 600;
+            color: var(--cream);
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tailor-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            text-align: center;
+        }
+
+        .tailor-form-section {
+            padding: 16px;
+            border-top: 1px solid var(--dark-4);
+            background: rgba(201, 168, 76, 0.05);
+        }
+
+        .tailor-form-group {
+            margin-bottom: 14px;
+        }
+
+        .tailor-form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .tailor-form-label.required::after {
+            content: " *";
+            color: #FF6B6B;
+        }
+
+        .tailor-form-input {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--dark-2);
+            border: 1px solid var(--dark-4);
+            border-radius: 6px;
+            color: var(--cream);
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .tailor-form-input:focus {
             outline: none;
             border-color: var(--gold);
             box-shadow: 0 0 8px rgba(201, 168, 76, 0.2);
         }
 
-        #tailorOutput {
+        .tailor-secondary-btn {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+
+        .tailor-content-panel {
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .tailored-section {
-            background: rgba(201, 168, 76, 0.08);
-            border: 1px solid rgba(201, 168, 76, 0.2);
-            border-left: 3px solid var(--gold);
-            padding: 14px 16px;
-            border-radius: 6px;
-            color: var(--cream);
-            transition: all 0.3s ease;
-        }
-
-        .tailored-section:hover {
-            background: rgba(201, 168, 76, 0.12);
-            border-color: rgba(201, 168, 76, 0.4);
-            box-shadow: 0 3px 12px rgba(201, 168, 76, 0.15);
-            transform: translateX(4px);
-        }
-
-        #tailorStatus {
-            margin-bottom: 16px;
-        }
-
-        .file-input-section {
-            margin-bottom: 16px;
-        }
-
-        .file-input-label {
-            display: block;
-            font-family: var(--font-display);
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: var(--gold);
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        #jobTailorResumeFile {
-            width: 100%;
-            padding: 10px 12px;
-            background-color: rgba(0, 0, 0, 0.2);
+            gap: 0;
+            background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
             border: 1px solid var(--dark-4);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .tailor-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: transparent;
+        }
+
+        .tailor-resume-text {
+            font-size: 12px;
+            line-height: 1.8;
             color: var(--text-muted);
-            border-radius: 6px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .tailor-placeholder {
+            height: 100%;
+        }
+
+        .tailor-placeholder-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .tailor-compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            border-bottom: 2px solid var(--dark-4);
+        }
+
+        .tailor-original-column,
+        .tailor-tailored-column {
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: none;
+        }
+
+        .tailor-original-column {
+            border-right: 1px solid var(--dark-4);
+        }
+
+        .tailor-compare-grid .tailor-panel-header {
+            border-bottom: none;
+        }
+
+        .tailor-original-column .tailor-panel-header {
+            border-right: 1px solid var(--dark-4);
+        }
+
+        .tailor-action-buttons {
+            display: flex;
+            gap: 10px;
+            padding: 16px;
+            background: transparent;
+            border-top: 1px solid var(--dark-4);
+        }
+
+        .tailor-summary-section {
+            padding: 20px;
+            background: transparent;
+            border-top: 2px solid var(--dark-4);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tailor-summary-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .tailor-btn-primary {
+            flex: 1;
+            padding: 12px 16px;
             font-size: 13px;
         }
 
-        #jobTailorResumeFile:focus {
-            outline: none;
-            border-color: var(--gold);
-        }
-
-        .tailor-btn {
-            width: 100%;
+        .tailor-btn-secondary {
+            flex: 1;
             padding: 12px 16px;
-            background: linear-gradient(135deg, var(--gold) 0%, #d4b85f 100%);
-            color: var(--dark);
-            border: none;
+            background: rgba(201, 168, 76, 0.15);
+            border: 1px solid var(--gold);
+            color: var(--gold);
             border-radius: 8px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 16px;
         }
 
-        .tailor-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(201, 168, 76, 0.3);
+        .tailor-btn-secondary:hover {
+            background: rgba(201, 168, 76, 0.25);
+            box-shadow: 0 4px 12px rgba(201, 168, 76, 0.2);
+        }
+
+        @media (max-width: 1400px) {
+            .tailor-grid {
+                grid-template-columns: 30% 70%;
+                gap: 16px;
+            }
+
+            .tailor-compare-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0;
+                height: auto;
+            }
         }
     </style>
 
-    <div class="job-tailor-container">
+    <div class="tailor-resume-container">
         <div style="margin-bottom: 8px;">
-            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">Job Tailor</h1>
+            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">Tailor Resume</h1>
             <p style="font-size: 13px; color: var(--text-dim); margin: 0;">Customize your resume to match job requirements</p>
         </div>
 
         <div class="tailor-grid">
-            <div class="tailor-column">
-                <div class="modern-panel" style="flex: 1;">
-                    <div class="modern-panel-header">
-                        <h3>📋 Job Description</h3>
-                    </div>
-                    <div class="modern-panel-content" style="padding-top: 12px;">
-                        <div class="file-input-section">
-                            <label class="file-input-label">Resume (optional)</label>
-                            <input type="file" id="jobTailorResumeFile" accept=".pdf,.txt">
-                        </div>
-                    </div>
-                    <div class="modern-panel-content" style="flex: 1; border-top: 1px solid var(--dark-4); padding-top: 20px;">
-                        <textarea id="jobInput" 
-                                  placeholder="Senior Software Engineer - 5+ years experience in Python/JavaScript, leading teams, strong communication skills..."
-                                  style="width: 100%; height: 100%; border: none; background: transparent; color: var(--cream); resize: none; font-family: 'Courier New', monospace; font-size: 13px; padding: 0;"></textarea>
+            <!-- INPUT PANEL (LEFT) -->
+            <div class="tailor-input-panel">
+                <div class="tailor-panel-header">
+                    <h3>📋 Job Description</h3>
+                </div>
+
+                <div class="tailor-list" id="tailorResumeList">
+                    <div class="tailor-empty-state">
+                        <div class="tailor-empty-icon">📋</div>
+                        <div>No resumes yet</div>
                     </div>
                 </div>
-                <button class="tailor-btn" onclick="tailorResume()">🎯 Tailor Resume</button>
+
+                <div class="tailor-form-section">
+                    <div class="tailor-form-group">
+                        <label class="tailor-form-label">Job Position</label>
+                        <input type="text" id="jobPosition" class="tailor-form-input" placeholder="e.g., Senior Software Engineer">
+                    </div>
+                    <div class="tailor-form-group">
+                        <label class="tailor-form-label required">Job Description</label>
+                        <textarea id="jobInput" class="tailor-form-input" rows="6" placeholder="Paste the job description or key requirements..."></textarea>
+                    </div>
+                    <button class="tailor-secondary-btn" onclick="tailorResume()">🎯 Tailor Resume</button>
+                </div>
             </div>
 
-            <div class="tailor-column">
-                <div id="tailorStatus"></div>
-                <div id="tailorResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
-                    <div class="modern-panel" style="flex: 1;">
-                        <div class="modern-panel-header">
-                            <h3>📄 Tailored Resume</h3>
+            <!-- OUTPUT PANEL (RIGHT) -->
+            <div class="tailor-content-panel">
+                <!-- SIDE-BY-SIDE COMPARISON -->
+                <div class="tailor-compare-grid">
+                    <!-- ORIGINAL RESUME (LEFT) -->
+                    <div class="tailor-original-column">
+                        <div class="tailor-panel-header">
+                            <h3>📄 Original Resume</h3>
                         </div>
-                        <div class="modern-panel-content" style="flex: 1; overflow-y: auto;">
-                            <div id="tailorOutput"></div>
+                        <div class="tailor-content" id="tailorOriginalPreview">
+                            <div class="tailor-placeholder">
+                                <div class="tailor-placeholder-icon">👼</div>
+                                <div>Select a resume to preview</div>
+                            </div>
                         </div>
                     </div>
-                    <button class="tailor-btn" onclick="downloadPDF()">⬇️ Download PDF</button>
-                </div>
-                <div id="tailorPlaceholder" style="flex: 1; display: flex; flex-direction: column;">
-                    <div class="modern-panel" style="flex: 1; display: flex; align-items: center; justify-content: center;">
-                        <div style="text-align: center; color: var(--text-dim);">
-                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;">🎯</div>
-                            <p>Paste the job description and click "Tailor Resume"</p>
-                            <p style="font-size: 12px; margin-top: 8px;">Your customized resume will appear here</p>
+
+                    <!-- TAILORED RESUME (RIGHT) -->
+                    <div class="tailor-tailored-column">
+                        <div class="tailor-panel-header">
+                            <h3>🎯 Tailored Resume</h3>
                         </div>
+                        <div class="tailor-content" id="tailorTailoredPreview">
+                            <div class="tailor-placeholder">
+                                <div class="tailor-placeholder-icon">🎯</div>
+                                <div>Enter job details and tailor to see results</div>
+                            </div>
+                        </div>
+                        <div id="tailorActionButtons" class="tailor-action-buttons" style="display: none;">
+                            <button class="tailor-btn-primary" onclick="replaceTailoredResume()" title="Replace original resume with tailored version">💾 Replace Original</button>
+                            <button class="tailor-btn-secondary" onclick="saveTailoredResumeAs()" title="Save tailored resume with a new name">💾 Save As</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUMMARY SECTION -->
+                <div class="tailor-summary-section">
+                    <h4 style="font-size: 14px; font-weight: 600; color: var(--gold); text-transform: uppercase; margin: 0; letter-spacing: 0.5px;">📋 Tailoring Summary</h4>
+                    <div id="tailorSummaryText" class="tailor-summary-text">
+                        Select a resume and enter job details, then click "🎯 Tailor Resume" to see the customized version.
                     </div>
                 </div>
             </div>
@@ -827,36 +1251,530 @@
 <!-- PANEL 4: EXPERIENCE -->
 <!-- ================================================================ -->
 <section id="panel-experience" class="panel">
-    <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--cream); margin-bottom: var(--spacing-xl);">Experience Updater</h2>
+    <style>
+        /* ══════════════ MODERN EXPERIENCE CONTAINER ══════════════ */
+        .index-experience-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: calc(100vh - 180px);
+            padding: 20px;
+        }
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); height: calc(100vh - 250px);">
-        <!-- INPUT (LEFT) -->
-        <div style="display: flex; flex-direction: column;">
-            <div class="form-group">
-                <label>Section</label>
-                <select id="experienceSection" style="width: 100%; padding: var(--spacing-md); background-color: var(--dark-2); border: 1px solid var(--dark-4); color: var(--text); font-family: var(--font-body); border-radius: 4px;">
-                    <option value="work_experience">Work Experience</option>
-                    <option value="projects">Projects</option>
-                    <option value="leadership">Leadership</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Your Experience</label>
-                <textarea id="experienceInput" placeholder="I worked on a team of 5 developers building a mobile app. We used React Native and Node.js. I was responsible for..." style="flex: 1;"></textarea>
-            </div>
-            <button class="btn-primary" onclick="generateExperience()" style="width: 100%;">Generate Bullets</button>
+        /* ══════════════ PANEL STRUCTURE ══════════════ */
+        .index-modern-panel {
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
+            border: 1px solid var(--dark-4);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .index-modern-panel-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
+            border-bottom: 2px solid var(--gold);
+        }
+
+        .index-modern-panel-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .index-modern-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--dark-2);
+        }
+
+        /* ══════════════ TWO-COLUMN GRID LAYOUT ══════════════ */
+        .index-experience-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+
+        .index-experience-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ══════════════ INPUT & OUTPUT AREAS ══════════════ */
+        #experienceInput {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--dark-4);
+            color: var(--cream);
+            padding: 16px;
+            border-radius: 8px;
+            resize: none;
+        }
+
+        #experienceInput:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 8px rgba(201, 168, 76, 0.2);
+        }
+
+        #experienceSection {
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--dark-4);
+            color: var(--cream);
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: var(--font-body);
+        }
+
+        #experienceSection:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        #generatedBulletsList {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .index-generated-bullet {
+            background: rgba(201, 168, 76, 0.08);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-left: 3px solid var(--gold);
+            padding: 14px 16px;
+            border-radius: 6px;
+            color: var(--cream);
+            font-size: 13px;
+            line-height: 1.6;
+            transition: all 0.3s ease;
+        }
+
+        .index-generated-bullet:hover {
+            background: rgba(201, 168, 76, 0.12);
+            border-color: rgba(201, 168, 76, 0.4);
+            box-shadow: 0 3px 12px rgba(201, 168, 76, 0.15);
+            transform: translateX(4px);
+        }
+
+        /* ══════════════ STATUS & BUTTONS ══════════════ */
+        #experienceStatus {
+            margin-bottom: 16px;
+        }
+
+        .index-status-box {
+            padding: 12px 16px;
+            background: rgba(201, 168, 76, 0.1);
+            border: 1px solid rgba(201, 168, 76, 0.3);
+            border-radius: 8px;
+            color: var(--gold);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .index-experience-btn {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+
+        .index-experience-btn:active {
+            transform: translateY(0);
+        }
+
+        /* ══════════════ FEEDBACK PANEL STYLES ══════════════ */
+        .feedback-form-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 0;
+        }
+
+        .feedback-form-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--dark-3) 0%, var(--dark-4) 100%);
+            border-bottom: 2px solid var(--gold);
+        }
+
+        .feedback-form-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .feedback-form-controls {
+            padding: 20px;
+            background: var(--dark-2);
+            border-bottom: 1px solid var(--dark-4);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .feedback-message-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--dark-2);
+        }
+
+        #feedbackMessage {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--dark-4);
+            color: var(--cream);
+            padding: 12px;
+            border-radius: 6px;
+            resize: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        #feedbackMessage:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 8px rgba(201, 168, 76, 0.2);
+        }
+
+        /* ══════════════ STAR RATING STYLES ══════════════ */
+        .star-rating {
+            display: flex;
+            gap: 12px;
+            font-size: 60px;
+            align-items: center;
+        }
+
+        .star {
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            padding: 0;
+            background: none;
+            border: none;
+            font-size: 60px;
+            line-height: 1;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .star:hover {
+            color: var(--gold);
+            transform: scale(1.2);
+        }
+
+        .star.active {
+            color: var(--gold);
+        }
+
+        /* ══════════════ CUSTOM DROPDOWN STYLES ══════════════ */
+        .custom-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .dropdown-trigger {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--dark-4);
+            color: var(--cream);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-trigger:hover {
+            border-color: var(--gold);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .dropdown-trigger:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 8px rgba(201, 168, 76, 0.2);
+        }
+
+        .dropdown-arrow {
+            font-size: 11px;
+            transition: transform 0.2s ease;
+        }
+
+        .dropdown-trigger.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid var(--dark-4);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: -1px;
+        }
+
+        .dropdown-menu.open {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 10px 12px;
+            color: var(--cream);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+            font-size: 13px;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(201, 168, 76, 0.15);
+            color: var(--gold);
+            padding-left: 16px;
+        }
+
+        .dropdown-item.selected {
+            background: rgba(201, 168, 76, 0.25);
+            color: var(--gold);
+            font-weight: 500;
+        }
+    </style>
+
+    <div class="index-experience-container">
+        <!-- HEADER -->
+        <div style="margin-bottom: 8px;">
+            <h1 style="font-family: var(--font-display); font-size: 32px; color: var(--cream); margin: 0 0 4px 0;">Feedback & Suggestions</h1>
+            <p style="font-size: 13px; color: var(--text-dim); margin: 0;">Help us improve the application with your feedback</p>
         </div>
 
-        <!-- OUTPUT (RIGHT) -->
-        <div style="display: flex; flex-direction: column;">
-            <div id="experienceStatus"></div>
-            <div id="experienceResults" style="display: none; flex: 1; display: flex; flex-direction: column;">
-                <div class="card" style="flex: 1; overflow-y: auto;">
-                    <div class="card-header">Generated Bullets</div>
-                    <div id="generatedBulletsList" style="margin-top: var(--spacing-md);"></div>
+        <!-- MAIN PANEL GRID -->
+        <div class="index-experience-grid">
+            <!-- FEEDBACK FORM (LEFT) -->
+            <div class="index-experience-column">
+                <div class="index-modern-panel" style="display: flex; flex-direction: column; gap: 0;">
+                    <div class="feedback-form-container">
+                        <!-- FORM HEADER & CONTROLS (STATIC) -->
+                        <div class="feedback-form-header">
+                            <h3>💬 Your Feedback</h3>
+                        </div>
+
+                        <div class="feedback-form-controls">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Feedback Type</label>
+                                <div class="custom-dropdown" id="feedbackTypeDropdown">
+                                    <button class="dropdown-trigger" onclick="toggleDropdown('feedbackTypeDropdown')">
+                                        <span class="dropdown-label">🐛 Bug Report</span>
+                                        <span class="dropdown-arrow">▼</span>
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <div class="dropdown-item" data-value="bug" onclick="selectDropdownItem('feedbackTypeDropdown', 'bug', '🐛 Bug Report')">🐛 Bug Report</div>
+                                        <div class="dropdown-item" data-value="feature" onclick="selectDropdownItem('feedbackTypeDropdown', 'feature', '✨ Feature Request')">✨ Feature Request</div>
+                                        <div class="dropdown-item" data-value="improvement" onclick="selectDropdownItem('feedbackTypeDropdown', 'improvement', '📈 Improvement Idea')">📈 Improvement Idea</div>
+                                        <div class="dropdown-item" data-value="ui" onclick="selectDropdownItem('feedbackTypeDropdown', 'ui', '🎨 UI/UX Feedback')">🎨 UI/UX Feedback</div>
+                                        <div class="dropdown-item" data-value="performance" onclick="selectDropdownItem('feedbackTypeDropdown', 'performance', '⚡ Performance Issue')">⚡ Performance Issue</div>
+                                        <div class="dropdown-item" data-value="other" onclick="selectDropdownItem('feedbackTypeDropdown', 'other', '💭 Other')">💭 Other</div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="feedbackType" value="bug">
+                            </div>
+
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Rating (Optional)</label>
+                                <div class="star-rating" id="starRating">
+                                    <button class="star" data-rating="1" title="Poor" onclick="setRating(1)">★</button>
+                                    <button class="star" data-rating="2" title="Fair" onclick="setRating(2)">★</button>
+                                    <button class="star" data-rating="3" title="Good" onclick="setRating(3)">★</button>
+                                    <button class="star" data-rating="4" title="Great" onclick="setRating(4)">★</button>
+                                    <button class="star" data-rating="5" title="Excellent" onclick="setRating(5)">★</button>
+                                </div>
+                                <input type="hidden" id="feedbackRating" value="0">
+                            </div>
+
+                            <label style="display: block; font-size: 12px; color: var(--gold); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Your Message</label>
+                        </div>
+
+                        <!-- TEXTAREA (SCROLLABLE) -->
+                        <div class="feedback-message-area">
+                            <textarea id="feedbackMessage" 
+                                      placeholder="Tell us what you think. What's working well? What could be improved? Any feature requests?"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <button class="index-experience-btn" onclick="submitFeedback()">📤 Send Feedback</button>
+            </div>
+
+            <!-- GUIDELINES (RIGHT) -->
+            <div class="index-experience-column">
+                <div id="feedbackPlaceholder" style="flex: 1; display: flex; flex-direction: column;">
+                    <div class="index-modern-panel" style="flex: 1; display: flex; flex-direction: column;">
+                        <div class="index-modern-panel-header">
+                            <h3>💡 Guidelines</h3>
+                        </div>
+                        <div class="index-modern-panel-content" style="flex: 1; overflow-y: auto;">
+                            <div style="color: var(--text-muted); font-size: 13px; line-height: 1.7;">
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="color: var(--gold); font-size: 13px; font-weight: 600; margin: 0 0 8px 0; text-transform: uppercase;">🐛 Bug Reports</h4>
+                                    <p style="margin: 0; font-size: 12px;">Describe the issue clearly, what you expected to happen, and what actually happened. Include steps to reproduce if possible.</p>
+                                </div>
+
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="color: var(--gold); font-size: 13px; font-weight: 600; margin: 0 0 8px 0; text-transform: uppercase;">✨ Feature Requests</h4>
+                                    <p style="margin: 0; font-size: 12px;">Explain what feature you'd like to see and why it would be useful. Share your use case and expected benefits.</p>
+                                </div>
+
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="color: var(--gold); font-size: 13px; font-weight: 600; margin: 0 0 8px 0; text-transform: uppercase;">📈 Improvements</h4>
+                                    <p style="margin: 0; font-size: 12px;">Suggest enhancements to existing features. Be specific about what could work better and how.</p>
+                                </div>
+
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="color: var(--gold); font-size: 13px; font-weight: 600; margin: 0 0 8px 0; text-transform: uppercase;">🎨 UI/UX Feedback</h4>
+                                    <p style="margin: 0; font-size: 12px;">Tell us about the user experience. What's confusing? What feels intuitive? What could be clearer?</p>
+                                </div>
+
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="color: var(--gold); font-size: 13px; font-weight: 600; margin: 0 0 8px 0; text-transform: uppercase;">⚡ Performance</h4>
+                                    <p style="margin: 0; font-size: 12px;">Notice something slow or laggy? Let us know what action triggered it and how it affected you.</p>
+                                </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<script>
+    let selectedRating = 0;
+
+    function setRating(rating) {
+        selectedRating = rating;
+        document.getElementById('feedbackRating').value = rating;
+        
+        // Update star display
+        const stars = document.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('active');
+            } else {
+                star.classList.remove('active');
+            }
+        });
+    }
+
+    function toggleDropdown(dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        const trigger = dropdown.querySelector('.dropdown-trigger');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        
+        trigger.classList.toggle('open');
+        menu.classList.toggle('open');
+    }
+
+    function selectDropdownItem(dropdownId, value, label) {
+        const dropdown = document.getElementById(dropdownId);
+        const trigger = dropdown.querySelector('.dropdown-trigger');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        const hiddenInput = dropdown.nextElementSibling;
+        
+        // Update hidden input
+        hiddenInput.value = value;
+        
+        // Update label
+        trigger.querySelector('.dropdown-label').textContent = label;
+        
+        // Update selected state
+        items.forEach(item => {
+            item.classList.remove('selected');
+            if (item.dataset.value === value) {
+                item.classList.add('selected');
+            }
+        });
+        
+        // Close dropdown
+        trigger.classList.remove('open');
+        menu.classList.remove('open');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdowns = document.querySelectorAll('.custom-dropdown');
+        dropdowns.forEach(dropdown => {
+            if (!dropdown.contains(event.target)) {
+                const trigger = dropdown.querySelector('.dropdown-trigger');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                trigger.classList.remove('open');
+                menu.classList.remove('open');
+            }
+        });
+    });
+
+    function submitFeedback() {
+        const feedbackType = document.getElementById('feedbackType').value;
+        const feedbackMessage = document.getElementById('feedbackMessage').value;
+        const feedbackRating = document.getElementById('feedbackRating').value;
+
+        if (!feedbackMessage.trim()) {
+            alert('Please enter your feedback message.');
+            return;
+        }
+
+        console.log('Feedback submitted:', {
+            type: feedbackType,
+            rating: feedbackRating || 'Not rated',
+            message: feedbackMessage
+        });
+
+        alert('Thank you for your feedback! We appreciate your input.');
+        
+        // Reset form
+        const feedback = document.getElementById('feedbackTypeDropdown');
+        selectDropdownItem('feedbackTypeDropdown', 'bug', '🐛 Bug Report');
+        document.getElementById('feedbackMessage').value = '';
+        selectedRating = 0;
+        document.getElementById('feedbackRating').value = '0';
+        document.querySelectorAll('.star').forEach(star => star.classList.remove('active'));
+    }
+</script>
+
 {% endblock %}

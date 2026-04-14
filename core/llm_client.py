@@ -26,30 +26,62 @@ def start_ollama():
     try:
         print("Starting Ollama...")
         
-        # Determine the command based on OS
         if platform.system() == "Windows":
-            # On Windows, Ollama is typically installed as a service or standalone
-            # Try to start the Ollama service or executable
-            try:
-                # Try starting as a service first
-                subprocess.run(["net", "start", "Ollama"], check=False, capture_output=True)
-                time.sleep(2)
-                if is_ollama_running():
-                    print("✓ Ollama service started successfully")
-                    return True
-            except:
-                pass
+            # Windows: Try multiple methods to start Ollama
             
-            # Try running the executable directly
-            ollama_path = os.environ.get("OLLAMA_PATH", "ollama")
-            _ollama_process = subprocess.Popen(
-                [ollama_path, "serve"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_CONSOLE if platform.system() == "Windows" else 0
+            # Method 1: Try starting as a Windows service
+            print("  → Attempting via Windows service...")
+            result = subprocess.run(
+                ["net", "start", "Ollama"], 
+                check=False, 
+                capture_output=True,
+                timeout=5
             )
+            time.sleep(2)
+            if is_ollama_running():
+                print("✓ Ollama service started successfully")
+                return True
+            
+            # Method 2: Try common Ollama installation paths
+            common_paths = [
+                os.path.expanduser(r"~\AppData\Local\Programs\Ollama\ollama.exe"),
+                os.path.expanduser(r"~\AppData\Local\Programs\Ollama\ollama app.exe"),
+                "ollama.exe",  # If in PATH
+                "ollama",      # If in PATH
+            ]
+            
+            print("  → Attempting via executable...")
+            for ollama_path in common_paths:
+                if os.path.exists(ollama_path) or ollama_path in ["ollama.exe", "ollama"]:
+                    try:
+                        print(f"    Trying: {ollama_path}")
+                        _ollama_process = subprocess.Popen(
+                            [ollama_path, "serve"],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            creationflags=subprocess.CREATE_NEW_CONSOLE
+                        )
+                        time.sleep(3)
+                        
+                        # Check if it actually started
+                        if is_ollama_running():
+                            print(f"✓ Ollama started successfully via: {ollama_path}")
+                            return True
+                    except Exception as e:
+                        print(f"    Failed: {e}")
+                        continue
+            
+            print("✗ Could not start Ollama via any method")
+            print("\n⚠️  IMPORTANT: Ollama needs to be running!")
+            print("  Open one of these options:")
+            print("  1. Run: ollama serve (in a terminal)")
+            print("  2. Click the Ollama app icon in Windows")
+            print("  3. Run: net start Ollama (if installed as service)")
+            return False
+            
         else:
-            # On macOS/Linux
+            # macOS/Linux
+            print("  → Starting via 'ollama serve'...")
             _ollama_process = subprocess.Popen(
                 ["ollama", "serve"],
                 stdout=subprocess.PIPE,
@@ -57,19 +89,22 @@ def start_ollama():
             )
         
         # Wait for Ollama to be ready
-        print("Waiting for Ollama to be ready...")
-        max_attempts = 30
+        print("Waiting for Ollama to respond...")
+        max_attempts = 60  # 60 seconds
         for attempt in range(max_attempts):
             if is_ollama_running():
-                print("✓ Ollama started successfully")
+                print("✓ Ollama started successfully and responding")
                 return True
+            sys.stdout.write(f"\r  Attempt {attempt + 1}/{max_attempts}...")
+            sys.stdout.flush()
             time.sleep(1)
         
-        print("✗ Ollama failed to start (timeout)")
+        print("\n✗ Ollama failed to start (timeout after 60 seconds)")
         return False
         
-    except FileNotFoundError:
-        print("✗ Ollama executable not found. Please ensure Ollama is installed and in PATH")
+    except FileNotFoundError as e:
+        print(f"✗ Ollama executable not found: {e}")
+        print("\n⚠️  Please install Ollama from https://ollama.ai")
         return False
     except Exception as e:
         print(f"✗ Error starting Ollama: {e}")
@@ -79,26 +114,69 @@ def start_ollama():
 def stop_ollama():
     """
     Stop Ollama server subprocess gracefully.
+    Handles both service and process termination.
     """
     global _ollama_process
     
     try:
+        stopped = False
+        
+        # On Windows, try stopping the service first
         if platform.system() == "Windows":
-            # Try stopping the Ollama service
-            subprocess.run(["net", "stop", "Ollama"], check=False, capture_output=True)
-        
-        if _ollama_process:
-            _ollama_process.terminate()
             try:
-                _ollama_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                _ollama_process.kill()
-            _ollama_process = None
+                result = subprocess.run(
+                    ["net", "stop", "Ollama"], 
+                    check=False, 
+                    capture_output=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("✓ Ollama service stopped")
+                    stopped = True
+            except Exception as e:
+                print(f"Note: Could not stop Ollama service: {e}")
         
-        print("✓ Ollama stopped")
+        # Also try to terminate the subprocess we started
+        if _ollama_process and _ollama_process.poll() is None:
+            try:
+                _ollama_process.terminate()
+                try:
+                    _ollama_process.wait(timeout=5)
+                    print("✓ Ollama process terminated gracefully")
+                except subprocess.TimeoutExpired:
+                    print("⚠ Ollama process not responding, forcing kill...")
+                    _ollama_process.kill()
+                    _ollama_process.wait(timeout=2)
+                    print("✓ Ollama process force-killed")
+                stopped = True
+            except Exception as e:
+                print(f"Error stopping Ollama process: {e}")
+            finally:
+                _ollama_process = None
+        
+        # Final check - if still running via taskkill (Windows)
+        if platform.system() == "Windows" and is_ollama_running():
+            try:
+                subprocess.run(
+                    ["taskkill", "/IM", "ollama.exe", "/F"],
+                    check=False,
+                    capture_output=True,
+                    timeout=5
+                )
+                print("✓ Ollama cleaned up via taskkill")
+                stopped = True
+            except Exception as e:
+                print(f"Note: taskkill encountered: {e}")
+        
+        if stopped:
+            print("✓ Ollama shutdown complete")
+        else:
+            print("✓ Ollama cleanup finished")
+        
         return True
+        
     except Exception as e:
-        print(f"Error stopping Ollama: {e}")
+        print(f"⚠ Error during Ollama shutdown: {e}")
         return False
 
 
@@ -112,6 +190,92 @@ def is_ollama_running():
         return response.status_code == 200
     except requests.exceptions.RequestException:
         return False
+
+
+def get_available_models():
+    """
+    Get list of models currently available in Ollama.
+    Returns list of model names, or empty list if Ollama is not running.
+    """
+    try:
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            models = [model.get("name", "") for model in data.get("models", [])]
+            return models
+        return []
+    except Exception as e:
+        print(f"Error getting available models: {e}")
+        return []
+
+
+def pull_model(model_name: str) -> bool:
+    """
+    Pull (download and load) a model from Ollama hub.
+    This can take a while for large models.
+    
+    Args:
+        model_name: Model name (e.g., "mistral:7b", "llama3:8b")
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        print(f"Pulling model {model_name}...")
+        url = "http://localhost:11434/api/pull"
+        payload = {"name": model_name, "stream": False}
+        
+        # This might take a while
+        response = requests.post(url, json=payload, timeout=300)
+        if response.status_code == 200:
+            print(f"✓ Successfully pulled {model_name}")
+            return True
+        else:
+            print(f"✗ Failed to pull {model_name}: {response.text}")
+            return False
+    except Exception as e:
+        print(f"Error pulling model {model_name}: {e}")
+        return False
+
+
+def ensure_models_loaded(required_models: list = None) -> dict:
+    """
+    Check if required models are loaded, and attempt to pull them if not.
+    
+    Args:
+        required_models: List of model names to check. If None, checks default models.
+    
+    Returns:
+        dict with keys: "running", "available_models", "missing_models", "loaded"
+    """
+    if required_models is None:
+        required_models = ["mistral:7b", "llama3:8b"]
+    
+    running = is_ollama_running()
+    available = get_available_models()
+    
+    if not running:
+        return {
+            "running": False,
+            "available_models": [],
+            "missing_models": required_models,
+            "loaded": False,
+            "error": "Ollama is not running"
+        }
+    
+    # Extract base model names for comparison (ignore tags like :latest)
+    available_base = set(m.split(":")[0] for m in available)
+    required_base = set(m.split(":")[0] for m in required_models)
+    
+    missing = required_base - available_base
+    
+    return {
+        "running": True,
+        "available_models": available,
+        "missing_models": list(missing),
+        "loaded": len(missing) == 0,
+        "status": f"Ollama running with {len(available)} model(s): {', '.join(available)}"
+    }
 
 
 # Model routing for hybrid approach
@@ -165,9 +329,23 @@ def ask_llm(prompt, model=None, max_tokens=2048, temperature=0.4, task_type=None
     if model is None:
         model = get_model_for_task(task_type)
 
+    # Task-specific timeouts: complex tasks need more time
+    # Parsing and grading are cpu-intensive, need longer timeouts
+    if task_type in ["parse", "grade"]:
+        request_timeout = 300  # 5 minutes for complex tasks
+    else:
+        request_timeout = 120  # 2 minutes for other tasks
+
+    # Add system context for specific tasks
+    final_prompt = prompt
+    if task_type == "polish":
+        final_prompt = f"""SYSTEM: You are a professional resume editor. Your task is to ENHANCE an existing, real resume. You are NOT creating fake experience. The resume below is written by a real person based on their actual work experience. Your job is to improve the writing quality, clarity, and impact of their real accomplishments.
+
+{prompt}"""
+
     payload = {
         "model": model,
-        "prompt": prompt,
+        "prompt": final_prompt,
         "stream": False,
         "options": {
             "num_predict": max_tokens,
@@ -176,20 +354,36 @@ def ask_llm(prompt, model=None, max_tokens=2048, temperature=0.4, task_type=None
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=120)
+        response = requests.post(url, json=payload, timeout=request_timeout)
         response.raise_for_status()
         data = response.json()
         return data.get("response", "")
-    except requests.exceptions.HTTPError:
+    except requests.exceptions.HTTPError as e:
         detail = ""
         try:
             detail = response.json().get("error", "")
         except Exception:
             pass
-        print(f"Error from Ollama ({response.status_code}): {detail or response.text}")
+        
+        # Better error messages for specific model/connection issues
+        if response.status_code == 404:
+            print(f"Error from Ollama: Model '{model}' not found or not loaded")
+            print(f"Available models can be checked at: http://localhost:11434/api/tags")
+            print(f"Load the model with: ollama pull {model}")
+        else:
+            print(f"Error from Ollama ({response.status_code}): {detail or response.text}")
+        return None
+    except requests.exceptions.ConnectionError:
+        print("❌ Cannot connect to Ollama at http://localhost:11434")
+        print("❌ Make sure Ollama is running. Start it with: ollama serve")
+        return None
+    except requests.exceptions.Timeout:
+        print(f"❌ Timeout waiting for Ollama to respond (model: {model})")
+        print(f"❌ This often means the model is still loading or system is slow.")
+        print(f"❌ Current timeout: {request_timeout}s. Try again in a moment or increase timeout if needed.")
         return None
     except requests.exceptions.RequestException as e:
-        print("Error connecting to Ollama:", e)
+        print(f"Error connecting to Ollama: {e}")
         return None
 
 if __name__ == "__main__": 

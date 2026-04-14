@@ -3,6 +3,7 @@ import re
 import json
 from .llm_client import ask_llm
 from .prompts import parse_resume_structure_prompt
+from .resume_model import ResumData
 
 
 HEADER_ALIASES = {
@@ -148,34 +149,49 @@ def parse_resume_with_mistral(filepath: str) -> dict:
         "skills": [...]
     }
     """
+    print(f"\n{'='*60}")
+    print(f"Parsing resume: {filepath}")
+    print(f"{'='*60}")
+    
     # Determine file type and extract text
     if filepath.lower().endswith('.pdf'):
+        print("📄 Detected PDF file - extracting text...")
         resume_text = load_pdf(filepath)
     elif filepath.lower().endswith(('.txt', '.text')):
+        print("📝 Detected TXT file - reading text...")
         resume_text = load_text(filepath)
     else:
-        print(f"ERROR: Unsupported file type. Use .pdf or .txt")
+        print(f"❌ ERROR: Unsupported file type. Use .pdf or .txt")
         return None
     
     if not resume_text or not resume_text.strip():
-        print(f"ERROR: Could not extract text from {filepath}")
+        print(f"❌ ERROR: Could not extract text from {filepath}")
         return None
+    
+    text_length = len(resume_text)
+    print(f"✓ Extracted {text_length} characters from file")
     
     # Generate parsing prompt
     prompt = parse_resume_structure_prompt(resume_text)
     
     # Call Mistral for structured parsing
+    print(f"🤖 Sending to Mistral:7b for parsing...")
     response = ask_llm(prompt, model=None, max_tokens=8192, task_type="parse")
     
     if response is None:
-        print("ERROR: Failed to get response from Mistral")
-        return None
+        print("❌ ERROR: Failed to get response from Mistral (model may not be loaded)")
+        print("❌ TIP: Check that mistral:7b is loaded in Ollama by visiting http://localhost:11434/api/tags")
+        print("❌ To load mistral:7b, run: ollama pull mistral:7b")
+        raise Exception("Parsing model (mistral:7b) did not respond. Check Ollama status and make sure mistral:7b is loaded (run 'ollama pull mistral:7b')")
+    
+    print(f"✓ Received response from Mistral ({len(response)} characters)")
     
     # Extract and parse JSON from response
     try:
         # Handle markdown code blocks if present
         clean_response = response
         if "```json" in clean_response:
+            print("ℹ️ Cleaning JSON markdown blocks...")
             clean_response = clean_response.replace("```json", "").replace("```", "")
         elif "```" in clean_response:
             clean_response = clean_response.replace("```", "")
@@ -185,17 +201,55 @@ def parse_resume_with_mistral(filepath: str) -> dict:
         end_idx = clean_response.rfind('}') + 1
         
         if start_idx == -1 or end_idx == 0:
-            print("ERROR: No JSON found in Mistral response")
-            return None
+            print("❌ ERROR: No JSON found in Mistral response")
+            raise ValueError("No JSON found in Mistral response")
         
         json_str = clean_response[start_idx:end_idx]
+        print(f"📋 Parsing JSON structure ({len(json_str)} chars)...")
         parsed_resume = json.loads(json_str)
         
-        return parsed_resume
+        # Log parsed sections
+        sections_found = list(parsed_resume.keys())
+        print(f"✓ Successfully parsed resume structure:")
+        for section in sections_found:
+            if isinstance(parsed_resume[section], list):
+                print(f"  - {section}: {len(parsed_resume[section])} items")
+            else:
+                print(f"  - {section}: {type(parsed_resume[section]).__name__}")
+        
+        # Convert to ResumData object for structured access
+        resume_data = ResumData.from_llm_json(parsed_resume)
+        
+        # Validate the parsed data
+        is_valid, errors = resume_data.validate()
+        if not is_valid:
+            print(f"⚠️  Validation warnings:")
+            for error in errors:
+                print(f"  - {error}")
+        else:
+            print("✓ Resume validation passed")
+        
+        # Log contact info
+        print(f"✓ Contact info extracted:")
+        print(f"  - Name: {resume_data.contact.name}")
+        if resume_data.contact.email:
+            print(f"  - Email: {resume_data.contact.email}")
+        if resume_data.contact.phone:
+            print(f"  - Phone: {resume_data.contact.phone}")
+        if resume_data.contact.linkedin:
+            print(f"  - LinkedIn: {resume_data.contact.linkedin}")
+        if resume_data.contact.github:
+            print(f"  - GitHub: {resume_data.contact.github}")
+        if resume_data.contact.websites:
+            for site_name, site_url in resume_data.contact.websites.items():
+                print(f"  - {site_name}: {site_url}")
+        
+        print(f"{'='*60}\n")
+        return resume_data
         
     except json.JSONDecodeError as e:
-        print(f"ERROR: Failed to parse JSON from Mistral response: {e}")
-        return None
+        print(f"❌ ERROR: Failed to parse JSON from Mistral response: {e}")
+        raise Exception(f"Failed to parse resume structure: {str(e)}")
 
 
 def _normalize_header_text(line: str) -> str:
