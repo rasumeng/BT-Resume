@@ -1,0 +1,28 @@
+# Flutter project files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+build/
+
+# Windows
+windows/flutter/generated_plugin_bindings.h
+windows/flutter/generated_plugins.cmake
+
+# Generated files
+lib/models/resume_model.g.dart
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+*.log

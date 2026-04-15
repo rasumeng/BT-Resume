@@ -1,0 +1,60 @@
+name: btf_resume
+description: BTF Resume - Local AI Resume Helper Desktop App
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # HTTP and Networking
+  http: ^1.1.0
+  dio: ^5.4.0
+  
+  # State Management
+  provider: ^6.1.0
+  
+  # File Handling
+  file_picker: ^6.1.0
+  path_provider: ^2.1.1
+  
+  # JSON Serialization
+  json_annotation: ^4.8.1
+  
+  # Logging
+  logger: ^2.1.0
+  
+  # UI Components
+  flutter_markdown: ^0.6.17
+  google_fonts: ^6.2.0
+  
+  # Icons
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  flutter_linter: ^3.0.0
+  build_runner: ^2.4.8
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+  
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Roboto-Light.ttf
+          weight: 300
