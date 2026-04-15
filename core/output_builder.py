@@ -5,6 +5,7 @@ import json
 from core.input_parser import load_pdf, parse_section, parse_subsections
 from core.prompts import bullet_polish_prompt, job_tailor_prompt
 from core.llm_client import ask_llm
+from core.llm_batch_processor import polish_bullets_batch, tailor_bullets_batch
 
 # Section names as they appear in structured format from Mistral
 STRUCTURED_SECTIONS_TO_POLISH = ["work_experience", "projects", "leadership"]
@@ -82,19 +83,35 @@ def polish_entry(entry: dict, job_description, section_name: str = "") -> dict:
     bullet_texts = [b.get("text", "") if isinstance(b, dict) else b for b in original_bullets]
     
     if job_description:
-        # For job tailoring, process all bullets together for context
-        bullets_text = "\n".join([f"- {b}" for b in bullet_texts])
-        prompt = job_tailor_prompt(bullets_text, job_description)
-        polished = ask_llm(prompt, task_type="tailor")
-        polished = clean_bullets(polished)
-        if not polished:
-            polished = "\n".join(f"- {b}" for b in bullet_texts)
+        # For job tailoring, use batch processor if multiple bullets, otherwise single call
+        if len(bullet_texts) > 1:
+            try:
+                # Use batch processor for efficiency (5-10x faster)
+                polished_list = tailor_bullets_batch(bullet_texts, job_description)
+            except Exception as e:
+                print(f"Batch tailor failed: {e}, falling back to single call")
+                # Fallback: process all bullets together for context
+                bullets_text = "\n".join([f"- {b}" for b in bullet_texts])
+                prompt = job_tailor_prompt(bullets_text, job_description)
+                polished = ask_llm(prompt, task_type="tailor")
+                polished = clean_bullets(polished)
+                if not polished:
+                    polished = "\n".join(f"- {b}" for b in bullet_texts)
+                polished_list = [line.lstrip("- ").strip() for line in polished.split("\n") if line.strip()]
+        else:
+            # Single bullet: process with regular call
+            bullets_text = "\n".join([f"- {b}" for b in bullet_texts])
+            prompt = job_tailor_prompt(bullets_text, job_description)
+            polished = ask_llm(prompt, task_type="tailor")
+            polished = clean_bullets(polished)
+            if not polished:
+                polished = "\n".join(f"- {b}" for b in bullet_texts)
+            polished_list = [line.lstrip("- ").strip() for line in polished.split("\n") if line.strip()]
         
         # Convert back to structured format
         polished_bullets = []
-        for line in polished.split("\n"):
-            if line.strip():
-                text = line.lstrip("- ").strip()
+        for text in polished_list:
+            if text:
                 polished_bullets.append({
                     "text": text,
                     "has_location": "location" in text.lower() or "based" in text.lower(),
@@ -102,22 +119,48 @@ def polish_entry(entry: dict, job_description, section_name: str = "") -> dict:
                 })
         improved_entry["bullets"] = polished_bullets
     else:
-        # Bullet polish: process each bullet individually
-        polished_bullets = []
-        for bullet in bullet_texts:
-            prompt = bullet_polish_prompt(bullet, mode=polish_mode)
-            polished_one = ask_llm(prompt, task_type="polish")
-            cleaned_one = clean_bullets(polished_one)
-            
-            if cleaned_one:
-                first_line = cleaned_one.split("\n")[0].strip()
-                if len(first_line) <= 300:
-                    text = first_line.lstrip("- ").strip()
+        # Bullet polish: use batch processor if multiple bullets (5-10x faster)
+        if len(bullet_texts) > 1:
+            try:
+                # Use batch processor for efficiency
+                polished_list = polish_bullets_batch(bullet_texts, mode=polish_mode)
+            except Exception as e:
+                print(f"Batch polish failed: {e}, falling back to individual processing")
+                # Fallback: process each bullet individually
+                polished_list = []
+                for bullet in bullet_texts:
+                    prompt = bullet_polish_prompt(bullet, mode=polish_mode)
+                    polished_one = ask_llm(prompt, task_type="polish")
+                    cleaned_one = clean_bullets(polished_one)
+                    
+                    if cleaned_one:
+                        first_line = cleaned_one.split("\n")[0].strip()
+                        if len(first_line) <= 300:
+                            polished_list.append(first_line.lstrip("- ").strip())
+                        else:
+                            polished_list.append(bullet)
+                    else:
+                        polished_list.append(bullet)
+        else:
+            # Single bullet: process individually (no need for batch)
+            polished_list = []
+            for bullet in bullet_texts:
+                prompt = bullet_polish_prompt(bullet, mode=polish_mode)
+                polished_one = ask_llm(prompt, task_type="polish")
+                cleaned_one = clean_bullets(polished_one)
+                
+                if cleaned_one:
+                    first_line = cleaned_one.split("\n")[0].strip()
+                    if len(first_line) <= 300:
+                        polished_list.append(first_line.lstrip("- ").strip())
+                    else:
+                        polished_list.append(bullet)
                 else:
-                    text = bullet
-            else:
-                text = bullet
-            
+                    polished_list.append(bullet)
+        
+        # Convert to structured format
+        polished_bullets = []
+        for text in polished_list:
             polished_bullets.append({
                 "text": text,
                 "has_location": "location" in text.lower() or "based" in text.lower(),
@@ -157,7 +200,7 @@ def clean_bullets(text: str) -> str:
 
 def append_experience_entry(filepath, section, title, bullets, output_path=None):
     """Append a new experience entry to resume using Mistral structured format."""
-    from core.pdf_generator import generate_pdf
+    from core.generate_resume import build_resume
     from core.input_parser import parse_resume_with_mistral
 
     sections = parse_resume_with_mistral(filepath)
@@ -199,7 +242,7 @@ def append_experience_entry(filepath, section, title, bullets, output_path=None)
     sections[cleaned_section].append(new_entry)
 
     destination = output_path or filepath
-    generate_pdf(sections, destination)
+    build_resume(sections, destination)
     return destination
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import json
 from .llm_client import ask_llm
 from .prompts import parse_resume_structure_prompt
 from .resume_model import ResumData
+from .utils import extract_json_from_response, format_error_message, print_section_header, extract_urls
 
 
 HEADER_ALIASES = {
@@ -149,9 +150,7 @@ def parse_resume_with_mistral(filepath: str) -> dict:
         "skills": [...]
     }
     """
-    print(f"\n{'='*60}")
-    print(f"Parsing resume: {filepath}")
-    print(f"{'='*60}")
+    print_section_header(f"Parsing resume: {filepath}")
     
     # Determine file type and extract text
     if filepath.lower().endswith('.pdf'):
@@ -179,34 +178,15 @@ def parse_resume_with_mistral(filepath: str) -> dict:
     response = ask_llm(prompt, model=None, max_tokens=8192, task_type="parse")
     
     if response is None:
-        print("❌ ERROR: Failed to get response from Mistral (model may not be loaded)")
-        print("❌ TIP: Check that mistral:7b is loaded in Ollama by visiting http://localhost:11434/api/tags")
-        print("❌ To load mistral:7b, run: ollama pull mistral:7b")
-        raise Exception("Parsing model (mistral:7b) did not respond. Check Ollama status and make sure mistral:7b is loaded (run 'ollama pull mistral:7b')")
+        model = "mistral:7b"
+        print(format_error_message("model_not_loaded", model=model))
+        raise Exception(f"Parsing model ({model}) did not respond. Check Ollama status and make sure {model} is loaded (run 'ollama pull {model}')")
     
     print(f"✓ Received response from Mistral ({len(response)} characters)")
     
     # Extract and parse JSON from response
     try:
-        # Handle markdown code blocks if present
-        clean_response = response
-        if "```json" in clean_response:
-            print("ℹ️ Cleaning JSON markdown blocks...")
-            clean_response = clean_response.replace("```json", "").replace("```", "")
-        elif "```" in clean_response:
-            clean_response = clean_response.replace("```", "")
-        
-        # Find JSON object boundaries
-        start_idx = clean_response.find('{')
-        end_idx = clean_response.rfind('}') + 1
-        
-        if start_idx == -1 or end_idx == 0:
-            print("❌ ERROR: No JSON found in Mistral response")
-            raise ValueError("No JSON found in Mistral response")
-        
-        json_str = clean_response[start_idx:end_idx]
-        print(f"📋 Parsing JSON structure ({len(json_str)} chars)...")
-        parsed_resume = json.loads(json_str)
+        parsed_resume = extract_json_from_response(response)
         
         # Log parsed sections
         sections_found = list(parsed_resume.keys())
@@ -247,7 +227,7 @@ def parse_resume_with_mistral(filepath: str) -> dict:
         print(f"{'='*60}\n")
         return resume_data
         
-    except json.JSONDecodeError as e:
+    except ValueError as e:
         print(f"❌ ERROR: Failed to parse JSON from Mistral response: {e}")
         raise Exception(f"Failed to parse resume structure: {str(e)}")
 
@@ -337,42 +317,7 @@ def _split_inline_header(line: str):
 
 def _extract_contact_info(header_text: str) -> dict:
     """Extract email, phone, LinkedIn, and GitHub from header text."""
-    contact = {
-        "email": None,
-        "phone": None,
-        "linkedin": None,
-        "github": None,
-    }
-    
-    # Extract email (look for @)
-    email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", header_text)
-    if email_match:
-        contact["email"] = email_match.group(0)
-    
-    # Extract phone (common formats)
-    phone_match = re.search(r"(?:\+\d{1,3}[-.\s]?)?\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})", header_text)
-    if phone_match:
-        contact["phone"] = phone_match.group(0).strip()
-    
-    # Extract LinkedIn URL - with or without protocol
-    linkedin_match = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[\w\-\.]+/?", header_text, re.IGNORECASE)
-    if linkedin_match:
-        url = linkedin_match.group(0).rstrip('/')
-        # Add protocol if missing
-        if not url.startswith("http"):
-            url = "https://" + url
-        contact["linkedin"] = url
-    
-    # Extract GitHub URL - with or without protocol
-    github_match = re.search(r"(?:https?://)?(?:www\.)?github\.com/[\w\-\.]+/?", header_text, re.IGNORECASE)
-    if github_match:
-        url = github_match.group(0).rstrip('/')
-        # Add protocol if missing
-        if not url.startswith("http"):
-            url = "https://" + url
-        contact["github"] = url
-    
-    return contact
+    return extract_urls(header_text)
 
 
 def parse_section(text: str) -> dict:

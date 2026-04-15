@@ -26,7 +26,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (mounted) {
       if (success) {
         // Backend is ready, go to home
-        Navigator.of(context).pushReplacementNamed('/home');
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
       } else {
         // Show error
         ScaffoldMessenger.of(context).showSnackBar(

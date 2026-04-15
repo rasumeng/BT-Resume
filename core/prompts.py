@@ -336,3 +336,117 @@ Return ONLY valid JSON with no explanation, markdown formatting, or code blocks 
 }}
 
 PARSED RESUME:"""
+
+
+def parse_resume_to_pdf_format_prompt(resume_text: str) -> str:
+    """
+    Parse resume into the exact structure needed by generate_resume.py for PDF generation.
+    This is optimized for simplicity and direct PDF output without intermediate transformations.
+    """
+    return f"""You are a resume parsing expert. Extract structured data from this resume in the EXACT format needed for PDF generation.
+
+RESUME TO PARSE:
+{resume_text}
+
+===== EXTRACTION RULES =====
+
+1. NAME: Extract the person's full name from the top of the resume.
+
+2. CONTACT: Create an HTML-formatted string with email, phone, LinkedIn, GitHub, and portfolio.
+   - Format: '<link href="mailto:email@example.com"><u>email@example.com</u></link> | (123) 456-7890 | <link href="https://linkedin.com/in/profile"><u>www.linkedin.com/in/profile</u></link> | <link href="https://github.com/user"><u>github.com/user</u></link>'
+   - Use mailto: for email
+   - Include phone as plain text
+   - Include LinkedIn, GitHub, and portfolio URLs as clickable links
+   - Order: email | phone | linkedin | github | portfolio
+   - Only include contact items that are present in the resume
+   - Use self-closing link tags: <link href="URL"><u>display text</u></link>
+
+3. EDUCATION: For each education entry
+   - "school": School/University name
+   - "dates": Date range (e.g., "Aug 2023 - May 2027" or "2020 - 2024")
+   - "detail": Degree, major, GPA, honors as a single string (e.g., "Bachelors of Science in Computer Science | GPA: 3.8 / 4.0")
+
+4. TECHNICAL_SKILLS: Array of (label, value) tuples grouped by category
+   - Each tuple is: [label, comma-separated skills]
+   - Example: ["<b>Programming Languages</b>", "Python, C/C++, SQL, Java"]
+   - Example: ["<b>AI/ML</b>", "LLM Integration, Prompt Engineering, Machine Learning"]
+   - Group skills logically by category (Languages, AI/ML, Data, Tools, Soft Skills, etc.)
+   - Preserve any <b> tags for category labels
+   - Extract EVERY skill mentioned in the resume
+
+5. WORK_EXPERIENCE: For each job
+   - "title": Job title/position
+   - "company": Company/Organization name
+   - "dates": Date range (e.g., "Dec 2025 – Present" or "Feb 2023 – Dec 2024")
+   - "bullets": Array of accomplishment bullets
+     * Each bullet should be complete sentence/accomplishment
+     * Include any bold text formatting from original (e.g., "<b>40%</b>")
+     * Do NOT include leading "- " or "bullet" markers
+     * Extract EXACTLY as written in the resume
+
+6. PROJECTS: For each project
+   - "name": Project name/title
+   - "tech": Technologies/stack used (comma-separated, e.g., "Python, Ollama, LLaMA 3")
+   - "bullets": Array of accomplishment bullets
+     * Same formatting rules as work experience
+     * Extract exactly as written
+
+7. LEADERSHIP: For each leadership/activity role
+   - "title": Role/title (e.g., "Secretary", "President", "Volunteer")
+   - "org": Organization name
+   - "dates": Date range (e.g., "Sep 2025 – Present")
+   - "bullets": Array of accomplishment bullets
+     * Same formatting rules as work experience
+
+===== IMPORTANT RULES =====
+- Extract ALL content from the resume (don't skip sections)
+- Preserve all HTML formatting (<b>, <u>, <i>, links) from original
+- Do NOT invent or modify details - extract exactly as written
+- For skill values, separate items with commas: "Python, Java, C++"
+- Do NOT use [N/A] or placeholder text
+- Order sections as: name, contact, education, technical_skills, work_experience, projects, leadership
+- Return ONLY valid JSON with no explanation, no markdown, no code blocks
+
+===== JSON STRUCTURE =====
+Return exactly this structure (omit empty arrays/objects):
+
+{{
+  "name": "string",
+  "contact": "html string with links",
+  "education": [
+    {{"school": "string", "dates": "string", "detail": "string"}},
+    ...
+  ],
+  "technical_skills": [
+    ["<b>Category</b>", "skill1, skill2, skill3"],
+    ...
+  ],
+  "work_experience": [
+    {{
+      "title": "string",
+      "company": "string",
+      "dates": "string",
+      "bullets": ["bullet1", "bullet2", ...]
+    }},
+    ...
+  ],
+  "projects": [
+    {{
+      "name": "string",
+      "tech": "string",
+      "bullets": ["bullet1", "bullet2", ...]
+    }},
+    ...
+  ],
+  "leadership": [
+    {{
+      "title": "string",
+      "org": "string",
+      "dates": "string",
+      "bullets": ["bullet1", "bullet2", ...]
+    }},
+    ...
+  ]
+}}
+
+BEGIN EXTRACTION (return only valid JSON):"""

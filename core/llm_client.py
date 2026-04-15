@@ -5,10 +5,15 @@ import subprocess
 import time
 import sys
 import platform
+from collections import defaultdict
+from .utils import format_error_message, extract_json_from_response
 
 
 # Global process handle for Ollama
 _ollama_process = None
+
+# Performance tracking
+LLM_STATS = defaultdict(list)
 
 
 def start_ollama():
@@ -308,34 +313,47 @@ def get_model_for_task(task_type: str, explicit_model: str = None) -> str:
     return MODEL_ROUTING.get(task_type, os.getenv("OLLAMA_MODEL", "mistral:7b"))
 
 
-def ask_llm(prompt, model=None, max_tokens=2048, temperature=0.4, task_type=None):
+def ask_llm(prompt, model=None, max_tokens=None, temperature=None, task_type=None):
     """
-    Query an LLM via Ollama.
+    Query an LLM via Ollama with task-optimized parameters.
     
     Args:
         prompt: The prompt to send
-        model: Specific model to use (overrides task_type routing)
-        max_tokens: Max tokens to generate
-        temperature: Sampling temperature
-        task_type: Task classification for intelligent model routing
+        model: Specific model to use (overrides task_type)
+        max_tokens: Max tokens to generate (overrides task config)
+        temperature: Sampling temperature (overrides task config)
+        task_type: Task classification for intelligent routing
                   Options: "parse", "grade", "polish", "tailor", "update", "changes_summary"
     
     Returns:
         LLM response text, or None if error
     """
+    from .llm_config import get_task_config
+    from .llm_cache import get_cached, set_cached
+    
+    start_time = time.time()
     url = "http://localhost:11434/api/generate"
     
-    # Select model: explicit > task_type routing > env var > default
-    if model is None:
-        model = get_model_for_task(task_type)
-
-    # Task-specific timeouts: complex tasks need more time
-    # Parsing and grading are cpu-intensive, need longer timeouts
-    if task_type in ["parse", "grade"]:
-        request_timeout = 300  # 5 minutes for complex tasks
-    else:
-        request_timeout = 120  # 2 minutes for other tasks
-
+    # Get task-optimized config
+    config = get_task_config(task_type)
+    
+    # Allow explicit overrides
+    model = model or config["model"]
+    temperature = temperature if temperature is not None else config["temperature"]
+    max_tokens = max_tokens or config["max_tokens"]
+    request_timeout = config["timeout"]
+    
+    # Check cache first (before adding system context, so cache key is based on original prompt)
+    cache_key = (prompt, task_type or "unknown", model)
+    cached_response = get_cached(cache_key)
+    if cached_response is not None:
+        # Record cache hit timing
+        duration = time.time() - start_time
+        LLM_STATS[task_type or "unknown"].append(duration)
+        if duration > 5:
+            print(f"⚠️  Slow cache lookup ({task_type}): {duration:.1f}s")
+        return cached_response
+    
     # Add system context for specific tasks
     final_prompt = prompt
     if task_type == "polish":
@@ -357,34 +375,240 @@ def ask_llm(prompt, model=None, max_tokens=2048, temperature=0.4, task_type=None
         response = requests.post(url, json=payload, timeout=request_timeout)
         response.raise_for_status()
         data = response.json()
-        return data.get("response", "")
-    except requests.exceptions.HTTPError as e:
-        detail = ""
-        try:
-            detail = response.json().get("error", "")
-        except Exception:
-            pass
+        result = data.get("response", "")
         
-        # Better error messages for specific model/connection issues
+        # Cache the response
+        set_cached(cache_key, result)
+        
+        # Record performance metrics
+        duration = time.time() - start_time
+        LLM_STATS[task_type or "unknown"].append(duration)
+        
+        # Alert on slow requests
+        if duration > 5:
+            print(f"⚠️  Slow LLM ({task_type}): {duration:.1f}s")
+        
+        return result
+        
+    except requests.exceptions.HTTPError as e:
         if response.status_code == 404:
-            print(f"Error from Ollama: Model '{model}' not found or not loaded")
-            print(f"Available models can be checked at: http://localhost:11434/api/tags")
-            print(f"Load the model with: ollama pull {model}")
+            print(format_error_message("not_found", model=model))
         else:
+            try:
+                detail = response.json().get("error", "")
+            except Exception:
+                detail = response.text
             print(f"Error from Ollama ({response.status_code}): {detail or response.text}")
         return None
     except requests.exceptions.ConnectionError:
-        print("❌ Cannot connect to Ollama at http://localhost:11434")
-        print("❌ Make sure Ollama is running. Start it with: ollama serve")
+        print(format_error_message("connection_failed"))
         return None
     except requests.exceptions.Timeout:
-        print(f"❌ Timeout waiting for Ollama to respond (model: {model})")
-        print(f"❌ This often means the model is still loading or system is slow.")
-        print(f"❌ Current timeout: {request_timeout}s. Try again in a moment or increase timeout if needed.")
+        print(format_error_message("timeout", model=model, timeout=request_timeout))
         return None
     except requests.exceptions.RequestException as e:
         print(f"Error connecting to Ollama: {e}")
         return None
+
+
+def parse_resume_to_pdf_format(resume_text: str) -> dict:
+    """
+    Parse a resume text and extract structured data in the exact format needed by generate_resume.py.
+    
+    This function:
+    1. Sends the resume to the LLM with a specialized parsing prompt
+    2. Extracts structured JSON data
+    3. Validates the JSON structure
+    4. Returns the data ready for PDF generation
+    
+    Args:
+        resume_text: The resume content as plain text or formatted text
+    
+    Returns:
+        dict: Resume data in the format:
+        {
+            "name": str,
+            "contact": str (HTML formatted),
+            "education": [{"school": str, "dates": str, "detail": str}, ...],
+            "technical_skills": [(label, value), ...],
+            "work_experience": [{"title": str, "company": str, "dates": str, "bullets": [...]}, ...],
+            "projects": [{"name": str, "tech": str, "bullets": [...]}, ...],
+            "leadership": [{"title": str, "org": str, "dates": str, "bullets": [...]}, ...]
+        }
+        
+        Returns empty dict on parsing failure.
+    """
+    from .prompts import parse_resume_to_pdf_format_prompt
+    
+    print("🔄 Parsing resume with LLM...")
+    prompt = parse_resume_to_pdf_format_prompt(resume_text)
+    
+    # Use Mistral 7B for JSON parsing - it's more reliable with structured output
+    response = ask_llm(
+        prompt,
+        model="mistral:7b",
+        max_tokens=4096,
+        temperature=0.1  # Lower temperature for more consistent JSON
+    )
+    
+    if not response:
+        print("❌ LLM parsing failed - no response")
+        return {}
+    
+    # Extract JSON from response (LLM might include explanation text)
+    try:
+        try:
+            parsed_data = extract_json_from_response(response)
+            print("✅ Resume parsed successfully")
+            return parsed_data
+        except ValueError:
+            print("❌ Could not find valid JSON in LLM response")
+            print(f"Response preview: {response[:200]}...")
+            return {}
+    except Exception as e:
+        print(f"❌ Error parsing resume: {e}")
+        return {}
+
+
+def parse_resume_and_generate_pdf(resume_text: str, output_path: str = "generated_resume.pdf") -> bool:
+    """
+    Complete pipeline: Parse resume → Extract structured data → Generate PDF.
+    
+    Args:
+        resume_text: The resume content as text
+        output_path: Where to save the generated PDF
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    from .generate_resume import build_resume
+    
+    # Step 1: Parse resume
+    resume_data = parse_resume_to_pdf_format(resume_text)
+    
+    if not resume_data:
+        print("❌ Resume parsing failed - cannot generate PDF")
+        return False
+    
+    # Step 2: Validate required fields
+    required_fields = ["name", "contact"]
+    missing = [f for f in required_fields if not resume_data.get(f)]
+    
+    if missing:
+        print(f"⚠️  Warning: Missing required fields: {', '.join(missing)}")
+        # This is a warning, not a blocker - continue with partial data
+    
+    # Step 3: Generate PDF
+    try:
+        build_resume(resume_data, output_path)
+        print(f"✅ PDF generated successfully: {output_path}")
+        return True
+    except Exception as e:
+        print(f"❌ PDF generation failed: {e}")
+        return False
+
+
+
+def get_llm_stats() -> dict:
+    """Get LLM performance statistics."""
+    stats = {}
+    for task_type, times in LLM_STATS.items():
+        if times:
+            avg = sum(times) / len(times)
+            stats[task_type] = {
+                "calls": len(times),
+                "avg_time": f"{avg:.2f}s",
+                "min_time": f"{min(times):.2f}s",
+                "max_time": f"{max(times):.2f}s",
+            }
+    return stats
+
+
+def get_cache_stats() -> dict:
+    """
+    Get cache performance statistics.
+    Returns cache hit rate, items cached, and TTL info.
+    """
+    try:
+        from .llm_cache import get_cache_stats as get_cache_stats_from_cache
+        return get_cache_stats_from_cache()
+    except Exception as e:
+        return {"error": f"Could not retrieve cache stats: {e}"}
+
+
+def get_queue_stats() -> dict:
+    """
+    Get request queue performance statistics.
+    Returns active/queued/processed request counts.
+    """
+    try:
+        from .llm_queue import get_queue_stats as get_queue_stats_from_queue
+        return get_queue_stats_from_queue()
+    except Exception as e:
+        return {"error": f"Could not retrieve queue stats: {e}"}
+
+
+def get_all_stats() -> dict:
+    """Get comprehensive statistics for LLM, cache, and queue."""
+    return {
+        "llm": get_llm_stats(),
+        "cache": get_cache_stats(),
+        "queue": get_queue_stats(),
+    }
+
+
+def warmup_models(models: list = None, max_retries: int = 3) -> dict:
+    """
+    Preload models into Ollama memory for faster first requests.
+    
+    Args:
+        models: List of model names (default: required models)
+        max_retries: Times to retry if model fails to warm
+    
+    Returns:
+        dict with warmup status for each model
+    """
+    if models is None:
+        models = ["mistral:7b", "llama3:8b"]
+    
+    warmup_status = {}
+    
+    print("\n🔥 Warming up models...")
+    print("-" * 50)
+    
+    for model in models:
+        print(f"Warming {model}...", end=" ", flush=True)
+        
+        for attempt in range(max_retries):
+            try:
+                # Send minimal request to trigger model loading
+                response = ask_llm(
+                    ".",  # Minimal prompt
+                    model=model,
+                    max_tokens=1,
+                    temperature=0.0
+                )
+                
+                if response:
+                    print("✓")
+                    warmup_status[model] = "ready"
+                    break
+                else:
+                    print(".", end="", flush=True)
+            except Exception as e:
+                print(".", end="", flush=True)
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+        else:
+            print("✗")
+            warmup_status[model] = "failed"
+    
+    print("-" * 50)
+    
+    ready = sum(1 for v in warmup_status.values() if v == "ready")
+    print(f"✓ {ready}/{len(models)} models ready\n")
+    
+    return warmup_status
 
 if __name__ == "__main__": 
     from prompts import bullet_polish_prompt, job_tailor_prompt

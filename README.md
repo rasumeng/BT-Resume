@@ -24,13 +24,16 @@ Most AI resume tools cost money, require an account, or send your personal data 
 
 | Layer | Tool |
 |---|---|
-| Language | Python 3.10+ |
+| Backend Language | Python 3.10+ |
+| Frontend Framework | Flutter 3.41.6 (Dart 3.11.4) |
+| Desktop Target | Windows (10+) |
 | LLM Runtime | [Ollama](https://ollama.com) |
 | Bullet Polish Model | Mistral 7B (fast, efficient) |
 | Job Tailoring Model | LLaMA 3 8B (stronger instruction following) |
 | PDF Reading | pdfplumber |
 | PDF Generation | ReportLab |
-| CLI | argparse |
+| HTTP Client | Dio (with logging) |
+| REST API | Flask with CORS |
 
 > Smart model routing — uses Mistral for simple tasks and LLaMA 3 for complex ones, balancing speed and quality.
 
@@ -42,18 +45,18 @@ Most AI resume tools cost money, require an account, or send your personal data 
 
 Download the Windows installer and let it handle everything:
 
-1. **Download** `ResumeAI-Setup-1.0.exe`
+1. **Download** `BTF-Resume-Setup-1.0.exe`
 2. **Run** the installer
-3. **Follow the setup wizard** (handles Ollama + model downloads)
+3. **Follow the setup wizard** (handles backend + dependencies)
 4. **Launch the app** from your Desktop
 
 That's it! No command line required, no Python installation needed.
 
-> See [releases page](https://github.com/yourusername/resume-ai/releases) for the latest installer.
+> See [releases page](https://github.com/yourusername/BTF-Resume/releases) for the latest installer.
 
 ### For Developers: Manual Setup
 
-Read the section below for step-by-step setup.
+Read the section below for step-by-step setup with both backend and Flutter frontend.
 
 ---
 
@@ -106,27 +109,39 @@ ollama serve
 
 ## Usage
 
-### Polish your resume bullets
+### Desktop GUI (Recommended)
+
+**Start the backend:**
+```powershell
+cd "C:\Users\asume\OneDrive\Desktop\Important\Projects\BTF-Resume"
+.\venv\Scripts\Activate.ps1
+python run_backend.py
+```
+
+**Launch the Flutter app:**
+```powershell
+C:\Users\asume\OneDrive\Desktop\Important\Projects\BTF-Resume\flutter_app\build\windows\x64\runner\Release\btf_resume.exe
+```
+
+Or for development:
+```powershell
+cd flutter_app
+flutter run -d windows
+```
+
+**Available tabs:**
+- **My Resumes** — View and manage all your resumes
+- **Polish** — Enhance your bullet points with AI
+- **Tailor** — Customize resume for specific job descriptions
+- **Grade** — Get resume scores and improvement feedback
+
+### Command Line (Legacy)
+
 ```bash
 python main.py --resume samples/resume.txt
-```
-
-### Tailor your resume to a job description
-```bash
 python main.py --resume samples/resume.txt --job samples/job.txt
-```
-
-### Add a new experience to your resume
-```bash
-python main.py --resume samples/resume.txt --add-experience
-```
-
-### Combine flags
-```bash
 python main.py --resume samples/resume.pdf --job samples/job.txt --output outputs/my_resume.pdf
 ```
-
-> Both `.txt` and `.pdf` resume files are supported.
 
 ---
 
@@ -134,24 +149,63 @@ python main.py --resume samples/resume.pdf --job samples/job.txt --output output
 
 ```
 BTF-Resume/
-├── main.py               # CLI entry point
-├── llm_client.py         # Ollama API wrapper with model routing
-├── prompts.py            # All prompt templates
-├── input_parser.py       # Resume file reader and section parser
-├── output_builder.py     # AI pipeline and section assembler
-├── pdf_generator.py      # PDF output generator
+├── flutter_app/                  # Flutter desktop frontend
+│   ├── lib/
+│   │   ├── screens/
+│   │   │   ├── home_screen.dart        # Main navigation with 4 tabs
+│   │   │   ├── polish_screen.dart      # Bullet enhancement screen
+│   │   │   ├── tailor_screen.dart      # Job customization screen
+│   │   │   ├── grade_screen.dart       # Resume grading screen
+│   │   │   └── splash_screen.dart      # Backend startup verification
+│   │   ├── services/
+│   │   │   └── api_service.dart        # HTTP client for Flask API
+│   │   ├── models/
+│   │   │   └── resume_model.dart       # Data models & serialization
+│   │   └── main.dart                   # App entry point
+│   ├── windows/                   # Windows build configuration
+│   └── pubspec.yaml
+│
+├── backend/                      # Flask REST API
+│   ├── app.py                    # Flask app with CORS
+│   ├── routes/
+│   │   └── resume_routes.py      # 10 API endpoints
+│   └── services/
+│       └── resume_service.py     # Resume processing logic
+│
+├── core/
+│   ├── llm_client.py             # Ollama API wrapper with model routing
+│   ├── prompts.py                # All prompt templates
+│   ├── input_parser.py           # Resume file reader and section parser
+│   ├── output_builder.py         # AI pipeline and section assembler
+│   └── resume_grader.py          # Resume scoring engine
+│
 ├── samples/
-│   ├── resume.txt        # Sample resume input
-│   └── job.txt           # Sample job description
-├── outputs/              # Generated PDFs
-├── requirements.txt
+│   ├── resume.txt                # Sample resume input
+│   └── job.txt                   # Sample job description
+├── outputs/                      # Generated PDFs and backups
+├── run_backend.py                # Backend startup script
+├── requirements.txt              # Python dependencies
 └── README.md
 ```
 
 ---
 
-## How It Works
+## Architecture
 
+### Desktop Application Flow
+```
+Flutter Desktop UI (Windows)
+    ↓ (HTTP/JSON)
+Flask REST API (localhost:5000)
+    ↓
+Python Backend Services
+    ↓
+Ollama Local LLM
+    ↓
+Resume Output (PDF/TXT)
+```
+
+### Resume Processing Pipeline
 ```
 Resume File (.txt or .pdf)
         ↓
@@ -159,10 +213,26 @@ Resume File (.txt or .pdf)
         ↓
   Output Builder — routes each section through the right AI prompt
         ↓
-  Ollama (Local LLM) — Mistral or LLaMA 3 depending on task
+  Ollama (Local LLM) — Mistral 7B or LLaMA 3 8B depending on task
         ↓
-  PDF Generator — assembles and outputs a clean PDF resume
+  Resume Grader — scores and provides feedback
+        ↓
+  PDF Generator — assembles and outputs clean resume
+        ↓
+  Flutter UI — displays results in real-time
 ```
+
+### API Endpoints (10 total)
+- `POST /api/polish-bullets` — Enhance resume bullets
+- `POST /api/tailor-resume` — Customize for job description
+- `POST /api/grade-resume` — Score and analyze resume
+- `GET /api/list-resumes` — List all available resumes
+- `GET /api/get-resume/{name}` — Load specific resume
+- `PUT /api/update-resume` — Update resume content
+- `DELETE /api/delete-resume/{name}` — Remove resume
+- `POST /api/parse-resume` — Parse uploaded resume
+- `POST /api/save-resume-pdf` — Generate PDF output
+- `GET /api/health` — Backend health check
 
 ---
 
@@ -199,11 +269,15 @@ For detailed build instructions, see [BUILDING.md](BUILDING.md).
 
 ## Roadmap
 
-- [ ] Web frontend with drag-and-drop resume upload
+- [x] Flutter desktop GUI with professional styling (v0.3)
+- [x] Resume grading with feedback scores (v0.3)
+- [ ] File upload with drag-and-drop
 - [ ] Cover letter generator
 - [ ] LinkedIn summary generator
-- [ ] Optional cloud LLM support (Claude / GPT-4) for higher quality output
-- [ ] Resume scoring and ATS compatibility checker
+- [ ] Export to multiple formats (DOCX, HTML)
+- [ ] Optional cloud LLM support (Claude / GPT-4) for higher quality
+- [ ] macOS and Linux support
+- [ ] Professional installer package (.exe, .dmg, .deb)
 
 ---
 

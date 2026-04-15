@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/resume_model.dart';
+import 'polish_screen.dart';
+import 'tailor_screen.dart';
+import 'grade_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -19,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _apiService = ApiService();
     _loadResumes();
   }
@@ -60,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen>
             Tab(text: 'My Resumes'),
             Tab(text: 'Polish'),
             Tab(text: 'Tailor'),
+            Tab(text: 'Grade'),
           ],
         ),
       ),
@@ -67,8 +71,9 @@ class _HomeScreenState extends State<HomeScreen>
         controller: _tabController,
         children: [
           _buildMyResumesTab(),
-          _buildPolishTab(),
-          _buildTailorTab(),
+          PolishScreen(resumes: resumes),
+          TailorScreen(resumes: resumes),
+          GradeScreen(resumes: resumes),
         ],
       ),
     );
@@ -92,7 +97,9 @@ class _HomeScreenState extends State<HomeScreen>
             const Text('Upload a resume to get started'),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => _showUploadDialog(),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Upload feature coming soon')),
+              ),
               child: const Text('Upload Resume'),
             ),
           ],
@@ -131,54 +138,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildPolishTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('✨ Polish Your Resume Bullets'),
-            const SizedBox(height: 10),
-            const Text(
-              'Rewrite resume bullets to be stronger and ATS-optimized',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () => _showPolishDialog(),
-              child: const Text('Get Started'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTailorTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🎯 Tailor Your Resume'),
-            const SizedBox(height: 10),
-            const Text(
-              'Align your resume to a specific job description',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () => _showTailorDialog(),
-              child: const Text('Get Started'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _deleteResume(String filename) async {
     try {
       await _apiService.deleteResume(filename);
@@ -195,23 +154,5 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
     }
-  }
-
-  void _showUploadDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Upload feature coming soon')),
-    );
-  }
-
-  void _showPolishDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Polish feature coming soon')),
-    );
-  }
-
-  void _showTailorDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tailor feature coming soon')),
-    );
   }
 }

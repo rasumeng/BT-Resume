@@ -38,10 +38,24 @@ class ResumeFile {
 class ResumeContent {
   final String filename;
   final String content;
+  final String? fullName;
+  final String? email;
+  final String? phone;
+  final String? location;
+  final String? summary;
+  final List<String>? experience;
+  final List<String>? skills;
 
   ResumeContent({
     required this.filename,
     required this.content,
+    this.fullName,
+    this.email,
+    this.phone,
+    this.location,
+    this.summary,
+    this.experience,
+    this.skills,
   });
 }
 
@@ -79,24 +93,7 @@ class PolishResponse {
   Map<String, dynamic> toJson() => _$PolishResponseToJson(this);
 }
 
-/// Grade response
-@JsonSerializable()
-class GradeResponse {
-  final bool success;
-  final GradeData? grade;
-  final String? error;
-
-  GradeResponse({
-    required this.success,
-    this.grade,
-    this.error,
-  });
-
-  factory GradeResponse.fromJson(Map<String, dynamic> json) =>
-      _$GradeResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$GradeResponseToJson(this);
-}
-
+/// Grade data
 @JsonSerializable()
 class GradeData {
   final int score;
@@ -114,6 +111,24 @@ class GradeData {
   factory GradeData.fromJson(Map<String, dynamic> json) =>
       _$GradeDataFromJson(json);
   Map<String, dynamic> toJson() => _$GradeDataToJson(this);
+}
+
+/// Grade response
+@JsonSerializable()
+class GradeResponse {
+  final bool success;
+  final GradeData? grade;
+  final String? error;
+
+  GradeResponse({
+    required this.success,
+    this.grade,
+    this.error,
+  });
+
+  factory GradeResponse.fromJson(Map<String, dynamic> json) =>
+      _$GradeResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$GradeResponseToJson(this);
 }
 
 /// Generic API response

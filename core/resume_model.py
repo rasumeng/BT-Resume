@@ -7,6 +7,7 @@ This ensures consistent data storage across parsing and generation.
 
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict, field
+from .utils import create_bullet_points
 
 
 @dataclass
@@ -197,100 +198,74 @@ class ResumData:
         # Extract contact info
         contact_raw = llm_json.get("contact", {})
         if isinstance(contact_raw, str):
-            # Fallback: parse string contact info (shouldn't happen with good LLM)
             contact_raw = {"name": contact_raw}
         
         contact = ContactInfo.from_dict(contact_raw)
         if not contact.name:
-            contact.name = "Resume"  # Fallback name
+            contact.name = "Resume"
         
-        # Extract sections
-        work_exp = []
-        for item in llm_json.get("work_experience", []):
-            if isinstance(item, dict):
-                bullets = [
-                    BulletPoint(
-                        text=b["text"],
-                        has_location=b.get("has_location", False),
-                        has_date=b.get("has_date", False),
-                    )
-                    for b in item.get("bullets", [])
-                ]
-                work_exp.append(
-                    WorkExperience(
-                        position=item.get("position", ""),
-                        company=item.get("company", ""),
-                        location=item.get("location"),
-                        start_date=item.get("start_date"),
-                        end_date=item.get("end_date"),
-                        bullets=bullets,
-                    )
-                )
+        # Extract work experience
+        work_exp = [
+            WorkExperience(
+                position=item.get("position", ""),
+                company=item.get("company", ""),
+                location=item.get("location"),
+                start_date=item.get("start_date"),
+                end_date=item.get("end_date"),
+                bullets=create_bullet_points(item.get("bullets", [])),
+            )
+            for item in llm_json.get("work_experience", [])
+            if isinstance(item, dict)
+        ]
         
-        projects = []
-        for item in llm_json.get("projects", []):
-            if isinstance(item, dict):
-                bullets = [
-                    BulletPoint(
-                        text=b["text"],
-                        has_location=b.get("has_location", False),
-                        has_date=b.get("has_date", False),
-                    )
-                    for b in item.get("bullets", [])
-                ]
-                projects.append(
-                    Project(
-                        name=item.get("name", ""),
-                        location=item.get("location"),
-                        date=item.get("date"),
-                        technologies=item.get("technologies"),
-                        bullets=bullets,
-                    )
-                )
+        # Extract projects
+        projects = [
+            Project(
+                name=item.get("name", ""),
+                location=item.get("location"),
+                date=item.get("date"),
+                technologies=item.get("technologies"),
+                bullets=create_bullet_points(item.get("bullets", [])),
+            )
+            for item in llm_json.get("projects", [])
+            if isinstance(item, dict)
+        ]
         
-        education = []
-        for item in llm_json.get("education", []):
-            if isinstance(item, dict):
-                education.append(
-                    Education(
-                        degree=item.get("degree", ""),
-                        school=item.get("school", ""),
-                        location=item.get("location"),
-                        date=item.get("date"),
-                        details=item.get("details", []),
-                    )
-                )
+        # Extract education
+        education = [
+            Education(
+                degree=item.get("degree", ""),
+                school=item.get("school", ""),
+                location=item.get("location"),
+                date=item.get("date"),
+                details=item.get("details", []),
+            )
+            for item in llm_json.get("education", [])
+            if isinstance(item, dict)
+        ]
         
-        leadership = []
-        for item in llm_json.get("leadership", []):
-            if isinstance(item, dict):
-                bullets = [
-                    BulletPoint(
-                        text=b["text"],
-                        has_location=b.get("has_location", False),
-                        has_date=b.get("has_date", False),
-                    )
-                    for b in item.get("bullets", [])
-                ]
-                leadership.append(
-                    Leadership(
-                        title=item.get("title", ""),
-                        organization=item.get("organization"),
-                        location=item.get("location"),
-                        date=item.get("date"),
-                        bullets=bullets,
-                    )
-                )
+        # Extract leadership
+        leadership = [
+            Leadership(
+                title=item.get("title", ""),
+                organization=item.get("organization"),
+                location=item.get("location"),
+                date=item.get("date"),
+                bullets=create_bullet_points(item.get("bullets", [])),
+            )
+            for item in llm_json.get("leadership", [])
+            if isinstance(item, dict)
+        ]
         
-        skills = []
-        for item in llm_json.get("skills", []):
-            if isinstance(item, dict):
-                skills.append(
-                    Skill(
-                        category=item.get("category", ""),
-                        items=item.get("items", []),
-                    )
-                )
+        # Extract skills
+        skills = [
+            Skill(
+                category=item.get("category", ""),
+                items=item.get("items", []),
+            )
+            for item in llm_json.get("skills", [])
+            if isinstance(item, dict)
+        ]
         
         return cls(
             contact=contact,
