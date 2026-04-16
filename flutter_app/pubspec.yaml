@@ -19,7 +19,7 @@ dependencies:
   provider: ^6.1.0
   
   # File Handling
-  # file_picker: ^6.1.0  # Temporarily disabled - causes Windows build issues
+  file_picker: ^5.5.0
   path_provider: ^2.1.1
   
   # JSON Serialization
@@ -31,6 +31,10 @@ dependencies:
   # UI Components
   flutter_markdown: ^0.6.17
   google_fonts: ^6.2.0
+  
+  # File/System
+  url_launcher: ^6.2.0
+  syncfusion_flutter_pdfviewer: ^24.2.9
   
   # Icons
   cupertino_icons: ^1.0.2

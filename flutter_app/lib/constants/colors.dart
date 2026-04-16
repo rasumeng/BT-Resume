@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary & Secondary Colors
-  static const Color darkPrimary = Color(0xFF1a1a2e);
-  static const Color darkSecondary = Color(0xFF16213e);
-  static const Color dark2 = Color(0xFF2d2d4a);
-  static const Color dark3 = Color(0xFF3a3a54);
-  static const Color dark4 = Color(0xFF4a4a64);
+  static const Color darkPrimary = Color(0xFF0D0D0B);
+  static const Color darkSecondary = Color(0xFF1A1A17);
+  static const Color dark2 = Color(0xFF252520);
+  static const Color dark3 = Color(0xFF33332D);
+  static const Color dark4 = Color(0xFF3a3a54);
 
   // Accent Colors
-  static const Color gold = Color(0xFFc9a84c);
+  static const Color gold = Color(0xFFC9A84C);
   static const Color goldHover = Color(0xFFd4b85f);
-  static const Color cream = Color(0xFFf5f5f5);
+  static const Color cream = Color(0xFFF5F0E8);
 
   // Text Colors
-  static const Color textSecondary = Color(0xFFb0b0c0);
-  static const Color textTertiary = Color(0xFF808090);
+  static const Color textSecondary = Color(0xFFC4BFB3);
+  static const Color textTertiary = Color(0xFF8B8680);
 
   // Status Colors
   static const Color errorRed = Color(0xFFe74c3c);

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/typography.dart';
 
-class TailorScreen extends StatefulWidget {
-  const TailorScreen({Key? key}) : super(key: key);
+class FeedbackScreen extends StatefulWidget {
+  const FeedbackScreen({Key? key}) : super(key: key);
 
   @override
-  State<TailorScreen> createState() => _TailorScreenState();
+  State<FeedbackScreen> createState() => _FeedbackScreenState();
 }
 
-class _TailorScreenState extends State<TailorScreen> {
+class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -18,14 +18,14 @@ class _TailorScreenState extends State<TailorScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tailor Resume',
+            'Resume Feedback',
             style: AppTypography.headingPageTitle.copyWith(
               color: AppColors.cream,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Customize your resume for specific job descriptions',
+            'Get AI-powered feedback on your resume',
             style: AppTypography.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -36,7 +36,7 @@ class _TailorScreenState extends State<TailorScreen> {
             child: Column(
               children: [
                 Icon(
-                  Icons.content_paste,
+                  Icons.assessment,
                   size: 64,
                   color: AppColors.gold,
                 ),
@@ -49,7 +49,7 @@ class _TailorScreenState extends State<TailorScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tailor functionality is being built...',
+                  'Feedback functionality is being built...',
                   style: AppTypography.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
                   ),

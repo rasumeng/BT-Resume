@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'constants/colors.dart';
 import 'constants/typography.dart';
+import 'screens/my_resumes_screen.dart';
+import 'screens/polish_screen.dart';
+import 'screens/tailor_screen.dart';
+import 'screens/feedback_screen.dart';
 
 void main() {
   runApp(const BTFResumeApp());
@@ -61,36 +65,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         elevation: 0,
         title: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.gold,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  'BTF',
-                  style: AppTypography.labelText.copyWith(
-                    color: AppColors.darkPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+            Image.asset(
+              'assets/icons/BTR-Logo.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.contain,
             ),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Beyond The Resume',
+                  'Save Time, Start Applying',
                   style: AppTypography.headingPageTitle.copyWith(
                     fontSize: 20,
                     color: AppColors.cream,
                   ),
                 ),
                 Text(
-                  'Professional Resume Management',
+                  'All-in-One Resume Builder Powered by AI',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -109,21 +102,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
           labelColor: AppColors.gold,
           unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.gold,
-          indicatorWeight: 3,
+          dividerColor: AppColors.gold,
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(
+              color: AppColors.gold,
+              width: 4,
+            ),
+          ),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           // My Resumes Tab
-          _buildPlaceholderTab('My Resumes'),
+          const MyResumesScreen(),
           // Polish Tab
-          _buildPlaceholderTab('Polish Resume'),
+          const PolishScreen(),
           // Tailor Tab
-          _buildPlaceholderTab('Tailor Resume'),
+          const TailorScreen(),
           // Experience Tab
-          _buildPlaceholderTab('Generate Experience'),
+          const FeedbackScreen(),
         ],
       ),
     );
