@@ -1,82 +1,154 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'constants/app_constants.dart';
-import 'services/api_service.dart';
-import 'screens/home_screen.dart';
-import 'screens/splash_screen.dart';
+import 'constants/colors.dart';
+import 'constants/typography.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const BTFResumeApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class BTFResumeApp extends StatelessWidget {
+  const BTFResumeApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: AppConstants.appTitle,
+      title: 'Beyond The Resume',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Modern color scheme matching the HTML design
-        primaryColor: const Color(0xFFC9A84C), // Gold
-        scaffoldBackgroundColor: const Color(0xFF14141F), // Dark background
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E1E2E),
-          foregroundColor: Color(0xFFC9A84C),
-          elevation: 1,
-        ),
-        textTheme: const TextTheme(
-          headlineLarge: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFF5F0E8),
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            color: Color(0xFFC4BFBD),
-          ),
-        ),
         useMaterial3: true,
+        primaryColor: AppColors.darkPrimary,
+        scaffoldBackgroundColor: AppColors.darkPrimary,
+        colorScheme: ColorScheme.dark(
+          primary: AppColors.gold,
+          secondary: AppColors.darkSecondary,
+          surface: AppColors.dark2,
+          error: AppColors.errorRed,
+        ),
       ),
-      home: const SplashScreen(),
+      home: const HomeScreen(),
     );
   }
 }
 
-/// Global service provider
-class ServiceProvider with ChangeNotifier {
-  final ApiService apiService = ApiService();
-  bool isBackendReady = false;
-  String? errorMessage;
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
-  /// Wait for backend to be ready
-  Future<bool> waitForBackend() async {
-    final startTime = DateTime.now();
-    final timeout =
-        Duration(milliseconds: AppConstants.backendStartupTimeout);
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    while (DateTime.now().difference(startTime) < timeout) {
-      try {
-        if (await apiService.checkHealth()) {
-          isBackendReady = true;
-          notifyListeners();
-          return true;
-        }
-      } catch (e) {
-        // Continue trying
-      }
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
-      // Wait before retry
-      await Future.delayed(
-        Duration(
-          milliseconds: AppConstants.healthCheckRetryInterval,
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.darkPrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.darkPrimary,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.gold,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  'BTF',
+                  style: AppTypography.labelText.copyWith(
+                    color: AppColors.darkPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Beyond The Resume',
+                  style: AppTypography.headingPageTitle.copyWith(
+                    fontSize: 20,
+                    color: AppColors.cream,
+                  ),
+                ),
+                Text(
+                  'Professional Resume Management',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
-    }
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: '📄 MY RESUMES'),
+            Tab(text: '✨ POLISH'),
+            Tab(text: '🎯 TAILOR'),
+            Tab(text: '⚡ FEEDBACK'),
+          ],
+          labelColor: AppColors.gold,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.gold,
+          indicatorWeight: 3,
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // My Resumes Tab
+          _buildPlaceholderTab('My Resumes'),
+          // Polish Tab
+          _buildPlaceholderTab('Polish Resume'),
+          // Tailor Tab
+          _buildPlaceholderTab('Tailor Resume'),
+          // Experience Tab
+          _buildPlaceholderTab('Generate Experience'),
+        ],
+      ),
+    );
+  }
 
-    errorMessage = 'Backend startup timeout. Make sure Ollama is running.';
-    notifyListeners();
-    return false;
+  Widget _buildPlaceholderTab(String title) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: AppTypography.headingPageTitle.copyWith(
+              color: AppColors.cream,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Ready to build',
+            style: AppTypography.bodyLarge.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
