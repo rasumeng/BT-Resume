@@ -155,218 +155,222 @@ class _PolishScreenState extends State<PolishScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // List Section Header
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Select Resume to Polish',
-                        style: AppTypography.labelText.copyWith(
-                          color: AppColors.cream,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${resumeFiles.length} resume(s)',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Resume List
+                // Resume List Section (with Header)
                 Expanded(
                   flex: 50,
-                  child: isLoading
-                      ? Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: AppColors.gold.withOpacity(0.3),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        // Header inside border
+                        Padding(
+                          padding: const EdgeInsets.all(5.0),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppColors.gold),
-                              ),
-                              const SizedBox(height: 16),
                               Text(
-                                'Loading resumes...',
+                                'Select Resume to Polish',
+                                textAlign: TextAlign.center,
+                                style: AppTypography.labelText.copyWith(
+                                  color: AppColors.cream,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${resumeFiles.length} resume(s)',
+                                textAlign: TextAlign.center,
                                 style: AppTypography.bodySmall.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      : resumeFiles.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.description_outlined,
-                                    size: 48,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No resumes found',
-                                    style: AppTypography.bodyLarge.copyWith(
-                                      color: AppColors.textSecondary,
+                        ),
+                        // Divider under header
+                        Container(
+                          height: 1,
+                          color: AppColors.gold.withOpacity(0.3),
+                        ),
+                        // Content
+                        Expanded(
+                          child: isLoading
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          AppColors.gold),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Add a resume first',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: AppColors.textTertiary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Column(
-                              children: [
-                                Expanded(
-                                  child: ListView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    itemCount: resumeFiles.length,
-                                    itemBuilder: (context, index) {
-                                      final isSelected =
-                                          selectedResumeIndex == index;
-                                      final fileName =
-                                          ResumeFileService.getFileName(
-                                              resumeFiles[index].path);
-                                      final lastModified =
-                                          ResumeFileService.getLastModified(
-                                              resumeFiles[index]);
-                                      final fileSize =
-                                          _getFileSizeText(
-                                              resumeFiles[index]);
-
-                                      return GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            selectedResumeIndex = index;
-                                            _resetPolish();
-                                          });
-                                        },
-                                        child: Container(
-                                          margin: const EdgeInsets.only(
-                                              bottom: 12),
-                                          padding:
-                                              const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? AppColors.dark3
-                                                : AppColors.dark2,
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: isSelected
-                                                  ? AppColors.gold
-                                                  : AppColors.dark3,
-                                              width: isSelected ? 2 : 1,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.picture_as_pdf,
-                                                    color:
-                                                        AppColors.errorRed,
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      fileName,
-                                                      style: AppTypography
-                                                          .labelText
-                                                          .copyWith(
-                                                        color: AppColors
-                                                            .cream,
-                                                        fontSize: 12,
-                                                      ),
-                                                      overflow:
-                                                          TextOverflow
-                                                              .ellipsis,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    lastModified,
-                                                    style: AppTypography
-                                                        .bodySmall
-                                                        .copyWith(
-                                                      color: AppColors
-                                                          .textSecondary,
-                                                      fontSize: 10,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    fileSize,
-                                                    style: AppTypography
-                                                        .bodySmall
-                                                        .copyWith(
-                                                      color: AppColors
-                                                          .textTertiary,
-                                                      fontSize: 9,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed:
-                                          isPolishing ? null : _polishResume,
-                                      icon: const Icon(Icons.auto_awesome),
-                                      label: const Text('Polish Resume'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.gold,
-                                        foregroundColor:
-                                            AppColors.darkPrimary,
-                                        disabledBackgroundColor:
-                                            AppColors.dark3,
-                                        disabledForegroundColor:
-                                            AppColors.textSecondary,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Loading resumes...',
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: AppColors.textSecondary,
                                       ),
                                     ),
+                                  ],
+                                ),
+                              )
+                            : resumeFiles.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.description_outlined,
+                                          size: 48,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No resumes found',
+                                          style: AppTypography.bodyLarge.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Add a resume first',
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: AppColors.textTertiary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Column(
+                                    children: [
+                                      Expanded(
+                                        child: ListView.builder(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 8),
+                                          itemCount: resumeFiles.length,
+                                          itemBuilder: (context, index) {
+                                            final isSelected =
+                                                selectedResumeIndex == index;
+                                            final fileName =
+                                                ResumeFileService.getFileName(
+                                                    resumeFiles[index].path);
+                                            final lastModified =
+                                                ResumeFileService.getLastModified(
+                                                    resumeFiles[index]);
+                                            final fileSize =
+                                                _getFileSizeText(
+                                                    resumeFiles[index]);
+
+                                            return GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  selectedResumeIndex = index;
+                                                  _resetPolish();
+                                                });
+                                              },
+                                              child: Container(
+                                                margin: const EdgeInsets.only(
+                                                  bottom: 12,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: isSelected
+                                                      ? AppColors.dark3
+                                                      : AppColors.dark2,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? AppColors.gold
+                                                        : AppColors.dark3,
+                                                    width: isSelected ? 2 : 1,
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.picture_as_pdf,
+                                                          color: AppColors
+                                                              .errorRed,
+                                                          size: 18,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            fileName,
+                                                            style: AppTypography
+                                                                .labelText
+                                                                .copyWith(
+                                                              color: AppColors
+                                                                  .cream,
+                                                              fontSize: 12,
+                                                            ),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(
+                                                      height: 4,
+                                                    ),
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          lastModified,
+                                                          style: AppTypography
+                                                              .bodySmall
+                                                              .copyWith(
+                                                            color: AppColors
+                                                                .textSecondary,
+                                                            fontSize: 10,
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          fileSize,
+                                                          style: AppTypography
+                                                              .bodySmall
+                                                              .copyWith(
+                                                            color: AppColors
+                                                                .textTertiary,
+                                                            fontSize: 9,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                    },
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                        ),
+                      ],
+              ],
+                    ),
+                  ),
                 ),
 
                 // Divider
@@ -457,58 +461,52 @@ class _PolishScreenState extends State<PolishScreen> {
                                             change.description,
                                             style: AppTypography.bodySmall
                                                 .copyWith(
-                                              color:
-                                                  AppColors.textSecondary,
+                                              color: AppColors.textSecondary,
                                               fontSize: 10,
                                             ),
                                           ),
                                         ],
                                       ),
                                     );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: _resetPolish,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.dark3,
-                                        foregroundColor: AppColors.cream,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 10,
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Try Again',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          )
-                        : Center(
-                            child: Text(
-                              'Polish your resume to see changes here',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                  ),
+                  },
                 ),
-              ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _resetPolish,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.dark3,
+                        foregroundColor: AppColors.cream,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                      child: const Text(
+                        'Try Again',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          )
+          : Center(
+            child: Text(
+              'Polish your resume to see changes here',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ),
-
-        // Divider
-        Container(
+      ),
+      // Vertical Divider
+      Container(
           width: 1,
           color: AppColors.dark3,
         ),
