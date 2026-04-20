@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 import 'constants/colors.dart';
 import 'constants/typography.dart';
+import 'screens/splash_screen.dart';
 import 'screens/my_resumes_screen.dart';
 import 'screens/polish_screen.dart';
 import 'screens/tailor_screen.dart';
 import 'screens/feedback_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set minimum window size
+  await windowManager.ensureInitialized();
+  const windowOptions = WindowOptions(
+    minimumSize: Size(1400, 850), // Minimum width x height
+    size: Size(1600, 900),
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+  
   runApp(const BTFResumeApp());
 }
 
@@ -29,8 +44,37 @@ class BTFResumeApp extends StatelessWidget {
           error: AppColors.errorRed,
         ),
       ),
-      home: const HomeScreen(),
+      home: const SplashWrapper(),
     );
+  }
+}
+
+// ============================================================================
+// SplashWrapper - Shows splash screen then transitions to home
+// ============================================================================
+class SplashWrapper extends StatefulWidget {
+  const SplashWrapper({Key? key}) : super(key: key);
+
+  @override
+  State<SplashWrapper> createState() => _SplashWrapperState();
+}
+
+class _SplashWrapperState extends State<SplashWrapper> {
+  bool _isReady = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isReady) {
+      return SplashScreen(
+        onReady: () {
+          setState(() {
+            _isReady = true;
+          });
+        },
+      );
+    }
+
+    return const HomeScreen();
   }
 }
 

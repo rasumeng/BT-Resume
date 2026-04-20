@@ -35,6 +35,7 @@ dependencies:
   # File/System
   url_launcher: ^6.2.0
   syncfusion_flutter_pdfviewer: ^24.2.9
+  window_manager: ^0.3.8
   
   # Icons
   cupertino_icons: ^1.0.2

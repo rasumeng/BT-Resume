@@ -79,6 +79,9 @@ def extract_json_from_response(response: str) -> dict:
     
     json_str = clean_response[start_idx:end_idx]
     
+    # Replace literal newlines with escaped newlines for valid JSON
+    json_str = json_str.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+    
     try:
         return json.loads(json_str)
     except json.JSONDecodeError as e:

@@ -37,6 +37,98 @@ INTENSITY: {mode_instructions[mode]}
 REWRITTEN BULLET:"""
 
 
+def parse_to_pdf_format_prompt(resume_text: str) -> str:
+    """Generate a prompt to parse resume text into structured JSON for PDF generation
+    
+    The JSON output must match the ResumData structure exactly for proper PDF generation.
+    """
+    return f"""Parse this resume text and structure it for PDF generation.
+Extract ALL information and organize into the exact JSON format specified below.
+
+CRITICAL REQUIREMENTS:
+1. Extract the COMPLETE name from contact info - this MUST be set correctly
+2. Do NOT use placeholder names like "Resume" or "John Doe" unless that's the actual name
+3. Include ALL work experience - do not skip or summarize
+4. Include ALL projects with full descriptions
+5. Include ALL education entries
+6. Include ALL leadership/activities roles
+7. Preserve all skills and certifications
+8. For each bullet point, extract the COMPLETE text - no truncation
+9. Return ONLY valid JSON - no markdown, code blocks, or explanations
+
+RESUME TEXT TO PARSE:
+{resume_text}
+
+Return ONLY valid JSON matching this exact structure:
+{{
+  "contact": {{
+    "name": "FULL NAME HERE",
+    "email": "email@example.com",
+    "phone": "phone number",
+    "location": "city, state",
+    "linkedin": "linkedin url",
+    "github": "github url"
+  }},
+  "summary": "Professional summary if present",
+  "work_experience": [
+    {{
+      "position": "Job Title",
+      "company": "Company Name",
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "location": "Location if available",
+      "bullets": ["Full bullet text 1", "Full bullet text 2"]
+    }}
+  ],
+  "projects": [
+    {{
+      "name": "Project Name",
+      "date": "Project Date",
+      "technologies": "Tech stack",
+      "location": "Location if applicable",
+      "bullets": ["Full project bullet 1", "Full project bullet 2"]
+    }}
+  ],
+  "education": [
+    {{
+      "degree": "Degree Type",
+      "school": "School/University Name",
+      "location": "Location",
+      "date": "Graduation Date",
+      "details": ["Detail 1", "Detail 2"]
+    }}
+  ],
+  "leadership": [
+    {{
+      "title": "Position Title",
+      "organization": "Organization Name",
+      "location": "Location",
+      "date": "Date",
+      "bullets": ["Role responsibility 1", "Role responsibility 2"]
+    }}
+  ],
+  "skills": [
+    {{
+      "category": "Skill Category",
+      "items": ["Skill 1", "Skill 2", "Skill 3"]
+    }}
+  ],
+  "certifications": [
+    {{
+      "name": "Certification Name",
+      "date": "Date Earned"
+    }}
+  ]
+}}
+
+IMPORTANT:
+- ALL text fields must contain the complete, untruncated content
+- ALL sections present in the resume must be included
+- Do not omit or abbreviate work experience bullets
+- Do not abbreviate project descriptions
+- Return only the JSON object, nothing else"""
+
+
 def resume_polish_prompt(resume_text: str, mode: str = "medium") -> str:
     """Generate a prompt to polish an entire resume"""
     mode_instructions = {

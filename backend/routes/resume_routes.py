@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 from services.file_service import FileService
 from services.llm_service import LLMService
+from services.feedback_service import FeedbackService
 
 # Create blueprint
 resume_bp = Blueprint('resume', __name__)
@@ -56,20 +57,75 @@ def update_resume():
 @resume_bp.route('/save-resume-pdf', methods=['POST'])
 def save_resume_pdf():
     """Generate and save a PDF resume."""
-    data = request.get_json()
-    filename = data.get('filename')
-    resume_text = data.get('resume_text')
-    
-    if not filename or not resume_text:
-        return jsonify({"success": False, "error": "filename and resume_text required"}), 400
-    
-    # Ensure .pdf extension
-    if not filename.endswith('.pdf'):
-        filename = filename.replace('.txt', '') + '.pdf'
-    
-    result = FileService.save_resume_pdf(filename, resume_text)
-    status_code = 200 if result.get('success') else 500
-    return jsonify(result), status_code
+    try:
+        logger.info("=" * 70)
+        logger.info("ROUTE: save_resume_pdf called")
+        logger.info("=" * 70)
+        
+        # Test import right here in the route
+        logger.info("Testing imports in route handler...")
+        try:
+            from core.pdf_generator import generate_pdf as test_pdf
+            logger.info("✓ Successfully imported generate_pdf from core.pdf_generator")
+        except ImportError as ie:
+            logger.error(f"✗ Failed to import from core.pdf_generator: {ie}")
+        
+        data = request.get_json()
+        filename = data.get('filename')
+        resume_text = data.get('resume_text')
+        
+        if not filename or not resume_text:
+            return jsonify({"success": False, "error": "filename and resume_text required"}), 400
+        
+        # Ensure .pdf extension
+        if not filename.endswith('.pdf'):
+            filename = filename.replace('.txt', '') + '.pdf'
+        
+        logger.info(f"save_resume_pdf: Calling FileService.save_resume_pdf({filename})")
+        result = FileService.save_resume_pdf(filename, resume_text)
+        status_code = 200 if result.get('success') else 500
+        logger.info(f"save_resume_pdf result: {result}")
+        return jsonify(result), status_code
+    except Exception as e:
+        logger.error(f"save_resume_pdf route handler exception: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        }), 500
+
+@resume_bp.route('/save-text-pdf', methods=['POST'])
+def save_text_pdf():
+    """Generate a simple PDF from plain text (for polished/tailored resumes)."""
+    try:
+        logger.info("save_text_pdf called")
+        
+        data = request.get_json()
+        filename = data.get('filename')
+        text_content = data.get('text_content')
+        
+        if not filename or not text_content:
+            return jsonify({"success": False, "error": "filename and text_content required"}), 400
+        
+        # Ensure .pdf extension
+        if not filename.endswith('.pdf'):
+            filename = filename.replace('.txt', '') + '.pdf'
+        
+        result = FileService.save_text_pdf(filename, text_content)
+        status_code = 200 if result.get('success') else 500
+        logger.info(f"save_text_pdf result: {result}")
+        return jsonify(result), status_code
+    except Exception as e:
+        logger.error(f"save_text_pdf route handler exception: {e}", exc_info=True)
+        import traceback
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+        }), 500
 
 @resume_bp.route('/delete-resume', methods=['DELETE'])
 def delete_resume():
@@ -109,6 +165,87 @@ def polish_bullets():
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
 
+@resume_bp.route('/extract-pdf-text', methods=['POST'])
+def extract_pdf_text():
+    """
+    Extract text from a PDF file.
+    
+    Request: multipart/form-data with 'file' field containing PDF
+    Response: {"success": true, "text": "extracted resume text"}
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "file field required"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "no file selected"}), 400
+        
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({"success": False, "error": "only PDF files allowed"}), 400
+        
+        # Extract text from PDF
+        try:
+            import PyPDF2
+            import io
+            
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(file.read()))
+            extracted_text = ""
+            
+            for page in pdf_reader.pages:
+                extracted_text += page.extract_text() + "\n"
+            
+            if not extracted_text.strip():
+                return jsonify({"success": False, "error": "no text found in PDF"}), 400
+            
+            logger.info(f'✓ Extracted {len(extracted_text)} characters from PDF: {file.filename}')
+            return jsonify({"success": True, "text": extracted_text.strip()}), 200
+            
+        except ImportError:
+            # Fallback if PyPDF2 not installed, try pdfplumber
+            try:
+                import pdfplumber
+                import io
+                
+                with pdfplumber.open(io.BytesIO(file.read())) as pdf:
+                    extracted_text = ""
+                    for page in pdf.pages:
+                        extracted_text += page.extract_text() + "\n"
+                
+                if not extracted_text.strip():
+                    return jsonify({"success": False, "error": "no text found in PDF"}), 400
+                
+                logger.info(f'✓ Extracted {len(extracted_text)} characters from PDF: {file.filename}')
+                return jsonify({"success": True, "text": extracted_text.strip()}), 200
+            except ImportError:
+                return jsonify({"success": False, "error": "PDF extraction libraries not available"}), 500
+    
+    except Exception as e:
+        logger.error(f'Error extracting PDF text: {e}')
+        return jsonify({"success": False, "error": f"extraction error: {str(e)}"}), 500
+
+@resume_bp.route('/polish-resume', methods=['POST'])
+def polish_resume():
+    """
+    Polish an entire resume using AI.
+    
+    Request JSON:
+    {
+        "resume_text": "...",
+        "intensity": "light|medium|aggressive"
+    }
+    """
+    data = request.get_json()
+    resume_text = data.get('resume_text', '')
+    intensity = data.get('intensity', 'medium')
+    
+    if not resume_text or not isinstance(resume_text, str):
+        return jsonify({"success": False, "error": "resume_text required"}), 400
+    
+    result = LLMService.polish_resume(resume_text, intensity)
+    status_code = 200 if result.get('success') else 500
+    return jsonify(result), status_code
+
 @resume_bp.route('/tailor-resume', methods=['POST'])
 def tailor_resume():
     """
@@ -136,38 +273,280 @@ def grade_resume():
     """
     Grade a resume and provide feedback.
     
-    Request JSON:
+    Request JSON (option 1 - direct text):
     {
         "resume_text": "..."
     }
+    
+    Request JSON (option 2 - from filename):
+    {
+        "filename": "resume.pdf"
+    }
     """
-    data = request.get_json()
-    resume_text = data.get('resume_text')
+    import sys
+    print("=== grade_resume route called ===", file=sys.stderr, flush=True)
+    sys.stderr.flush()
+    logger.warning("⚠️  grade_resume route called")
+    try:
+        data = request.get_json()
+        resume_text = data.get('resume_text')
+        filename = data.get('filename')
+        
+        # Get resume text either directly or from file
+        if not resume_text and filename:
+            # Extract from file
+            result = FileService.extract_resume_text(filename)
+            if not result.get('success'):
+                return jsonify(result), 400
+            resume_text = result.get('content')
+        
+        if not resume_text:
+            return jsonify({
+                "success": False, 
+                "error": "resume_text or filename required"
+            }), 400
+        
+        logger.warning("⚠️  Calling LLMService.grade_resume()")
+        result = LLMService.grade_resume(resume_text)
+        status_code = 200 if result.get('success') else 500
+        return jsonify(result), status_code
     
-    if not resume_text:
-        return jsonify({"success": False, "error": "resume_text required"}), 400
-    
-    result = LLMService.grade_resume(resume_text)
-    status_code = 200 if result.get('success') else 500
-    return jsonify(result), status_code
+    except Exception as e:
+        logger.error(f"✗ Exception in grade_resume route: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "success": False,
+            "error": f"Server error: {str(e)}"
+        }), 500
 
 @resume_bp.route('/parse-resume', methods=['POST'])
 def parse_resume():
     """
     Parse resume text into structured PDF format.
+    Automatically caches the parsed data for future operations.
     
     Request JSON:
     {
-        "resume_text": "..."
+        "resume_text": "...",
+        "filename": "resume.txt" (optional - for caching)
     }
     """
     data = request.get_json()
     resume_text = data.get('resume_text')
+    filename = data.get('filename')
     
     if not resume_text:
         return jsonify({"success": False, "error": "resume_text required"}), 400
     
     result = LLMService.parse_to_pdf_format(resume_text)
+    status_code = 200 if result.get('success') else 500
+    
+    # Cache the parsed data if filename provided
+    if filename and result.get('success'):
+        try:
+            from pathlib import Path
+            from config import get_resumes_dir
+            from services.cache_service import CacheService
+            
+            parsed_data = result.get('parsed_resume', {})
+            resumes_dir = get_resumes_dir()
+            resume_path = Path(resumes_dir) / filename
+            CacheService.save_parsed_resume(resume_path, parsed_data)
+            logger.info(f"✅ Cached parsed resume: {filename}")
+        except Exception as cache_err:
+            logger.warning(f"⚠️  Failed to cache: {cache_err}")
+    
+    return jsonify(result), status_code
+
+# ─────────────────────────────────────────────────────────────
+# ALTERATION & VERSION MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
+@resume_bp.route('/save-altered-resume', methods=['POST'])
+def save_altered_resume():
+    """
+    Save an altered (polished/tailored) resume with full version tracking.
+    
+    Implements complete workflow:
+    1. Save as text (fallback format)
+    2. Cache parsed JSON structure
+    3. Generate professional PDF with metadata
+    4. Track in version history
+    5. Return comprehensive result
+    
+    Request JSON:
+    {
+        "original_filename": "resume.pdf",
+        "altered_text": "...",
+        "parsed_json": {...},  # Optional - pre-parsed structure
+        "alteration_type": "polish|tailor",
+        "intensity": "light|medium|heavy",  # For polish
+        "job_description": "..."  # For tailor
+    }
+    """
+    try:
+        data = request.get_json()
+        original_filename = data.get('original_filename')
+        altered_text = data.get('altered_text')
+        parsed_json = data.get('parsed_json')
+        alteration_type = data.get('alteration_type', 'polish')
+        intensity = data.get('intensity')
+        job_description = data.get('job_description')
+        
+        # Validate inputs
+        if not original_filename or not altered_text:
+            return jsonify({
+                "success": False,
+                "error": "original_filename and altered_text required"
+            }), 400
+        
+        logger.info(f"📝 Saving altered resume: {alteration_type} of {original_filename}")
+        
+        result = FileService.save_altered_resume(
+            original_filename=original_filename,
+            altered_text=altered_text,
+            parsed_json=parsed_json,
+            alteration_type=alteration_type,
+            intensity=intensity,
+            job_description=job_description
+        )
+        
+        status_code = 200 if result.get('success') else 500
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"✗ Error saving altered resume: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__
+        }), 500
+
+@resume_bp.route('/alteration-history', methods=['GET'])
+def alteration_history():
+    """
+    Get the complete alteration history for a resume.
+    
+    Query parameters:
+    - filename: Resume filename to retrieve history for
+    
+    Response:
+    {
+        "success": true,
+        "filename": "resume.pdf",
+        "total_alterations": 3,
+        "created": "2026-04-19T10:00:00Z",
+        "alterations": [
+            {
+                "id": "uuid",
+                "type": "polish",
+                "timestamp": "...",
+                "intensity": "medium",
+                "status": "saved",
+                "text_file": "polished_medium_resume_...",
+                "pdf_file": "polished_medium_resume_..."
+            }
+        ]
+    }
+    """
+    try:
+        filename = request.args.get('filename')
+        
+        if not filename:
+            return jsonify({
+                "success": False,
+                "error": "filename query parameter required"
+            }), 400
+        
+        result = FileService.get_alteration_history(filename)
+        status_code = 200 if result.get('success') else 500
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"✗ Error retrieving alteration history: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@resume_bp.route('/alteration-stats', methods=['GET'])
+def alteration_stats():
+    """
+    Get statistics about alterations for a resume.
+    
+    Query parameters:
+    - filename: Resume filename to get stats for
+    
+    Response:
+    {
+        "success": true,
+        "total_alterations": 5,
+        "by_type": {
+            "polish": 3,
+            "tailor": 2
+        },
+        "latest_alteration": {
+            "type": "tailor",
+            "timestamp": "...",
+            "status": "saved"
+        }
+    }
+    """
+    try:
+        filename = request.args.get('filename')
+        
+        if not filename:
+            return jsonify({
+                "success": False,
+                "error": "filename query parameter required"
+            }), 400
+        
+        result = FileService.get_alteration_stats(filename)
+        status_code = 200 if result.get('success') else 500
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"✗ Error retrieving alteration stats: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# ─────────────────────────────────────────────────────────────
+# FEEDBACK & FEATURE REQUESTS
+# ─────────────────────────────────────────────────────────────
+
+@resume_bp.route('/submit-feedback', methods=['POST'])
+def submit_feedback():
+    """
+    Submit user feedback or feature request.
+    
+    Request JSON:
+    {
+        "type": "bug_report|feature_request|general",
+        "rating": 1-5,
+        "message": "User feedback text",
+        "email": "optional@email.com"
+    }
+    """
+    data = request.get_json()
+    feedback_type = data.get('type', 'general')
+    rating = data.get('rating', 3)
+    message = data.get('message', '')
+    user_email = data.get('email', None)
+    
+    if not message:
+        return jsonify({"success": False, "error": "Feedback message required"}), 400
+    
+    result = FeedbackService.submit_feedback(feedback_type, rating, message, user_email)
+    status_code = 200 if result.get('success') else 400
+    return jsonify(result), status_code
+
+@resume_bp.route('/feedback-summary', methods=['GET'])
+def feedback_summary():
+    """Get summary of feedback received (for admin/owner)."""
+    result = FeedbackService.get_feedback_summary()
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
 
