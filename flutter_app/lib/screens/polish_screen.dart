@@ -161,29 +161,48 @@ class _PolishScreenState extends State<PolishScreen> {
         
         logger.i('✅ Professional polished resume PDF generated: $polishedPdfPath');
 
+        // Get real changes from backend
+        List<String> changesFromBackend = [];
+        try {
+          changesFromBackend = await _apiService.getPolishChanges(
+            resumeContent,
+            polishedText,
+          );
+          logger.i('✓ Got ${changesFromBackend.length} real polish changes');
+        } catch (e) {
+          logger.w('⚠️  Failed to get polish changes: $e');
+          // Will use fallback changes below
+        }
+
+        // Convert change descriptions to PolishChange objects
+        List<PolishChange> realChanges = changesFromBackend.isNotEmpty
+            ? changesFromBackend
+                .map((change) => PolishChange(
+                  icon: '✓',
+                  title: change.length > 60 ? change.substring(0, 60) + '...' : change,
+                  description: change,
+                ))
+                .toList()
+            : [
+                // Fallback if no changes returned
+                PolishChange(
+                  icon: '✓',
+                  title: 'Content enhanced',
+                  description: 'Resume content optimized for clarity and impact',
+                ),
+                PolishChange(
+                  icon: '✓',
+                  title: 'Formatting improved',
+                  description: 'Professional formatting for ATS compatibility',
+                ),
+              ];
+
         setState(() {
           hasPolished = true;
           isPolishing = false;
           polishedPdfFile = polishedPdfFileTemp;
           polishedResumeContent = polishedText;
-          // Generate summary of improvements
-          polishChanges = [
-            PolishChange(
-              icon: '✓',
-              title: 'Professional template applied',
-              description: 'Resume formatted with professional template for better presentation',
-            ),
-            PolishChange(
-              icon: '✓',
-              title: 'Content enhanced by AI',
-              description: 'Action verbs, metrics, and keywords improved using AI optimization',
-            ),
-            PolishChange(
-              icon: '✓',
-              title: 'ATS optimized',
-              description: 'Resume formatted to pass ATS systems and improve readability',
-            ),
-          ];
+          polishChanges = realChanges;
         });
       } catch (pdfError) {
         logger.e('❌ Error generating polished PDF: $pdfError');
@@ -651,6 +670,7 @@ class _PolishScreenState extends State<PolishScreen> {
             itemBuilder: (context, index) => _buildResumeListItem(index),
           ),
         ),
+        _buildIntensityExplanation(),
         _buildPolishResumeButton(),
       ],
     );
@@ -720,6 +740,43 @@ class _PolishScreenState extends State<PolishScreen> {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // BUILD HELPER: Intensity Explanation
+  // --------------------------------------------------------------------------
+  Widget _buildIntensityExplanation() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.dark3.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.gold.withOpacity(0.2),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Polish Intensity: Medium',
+              style: AppTypography.bodyLarge.copyWith(
+                color: AppColors.cream,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Improve clarity and impact. Reframe for better readability while preserving all original accomplishments.',
+              style: AppTypography.bodyNormal.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),

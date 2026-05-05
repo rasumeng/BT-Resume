@@ -246,6 +246,41 @@ def polish_resume():
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
 
+@resume_bp.route('/get-polish-changes', methods=['POST'])
+def get_polish_changes():
+    """
+    Get a summary of changes between original and polished resume.
+    
+    Request JSON:
+    {
+        "original_resume": "...",
+        "polished_resume": "..."
+    }
+    """
+    try:
+        data = request.get_json()
+        original_resume = data.get('original_resume')
+        polished_resume = data.get('polished_resume')
+        
+        if not original_resume or not polished_resume:
+            return jsonify({
+                "success": False,
+                "error": "original_resume and polished_resume required"
+            }), 400
+        
+        result = LLMService.get_changes_summary(original_resume, polished_resume)
+        status_code = 200 if result.get('success') else 500
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"✗ Exception in get_polish_changes: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "success": False,
+            "error": f"Server error: {str(e)}"
+        }), 500
+
 @resume_bp.route('/tailor-resume', methods=['POST'])
 def tailor_resume():
     """
