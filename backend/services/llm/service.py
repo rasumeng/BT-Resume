@@ -4,52 +4,17 @@ Uses the initialized Ollama service via Flask request context.
 """
 
 import logging
-import json
-import re
+import traceback
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-from config import MODELS
-
-
-def _extract_json_from_response(response: str) -> Dict:
-    """
-    Extract and parse JSON from Ollama response.
-    Handles markdown code blocks, explanatory text, and malformed JSON.
-    
-    Args:
-        response: Raw response text from Ollama
-        
-    Returns:
-        Parsed JSON dict, or None if parsing fails
-    """
-    try:
-        json_str = response.strip()
-        
-        # First, try to find JSON in code blocks (```json ... ``` or ```...```)
-        # This handles: "Some text\n```json\n{...}\n```\nMore text"
-        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', json_str)
-        if match:
-            json_str = match.group(1).strip()
-        # If no code block, try to find raw JSON object or array
-        # This handles: "Some text {json} more text"
-        elif not json_str.startswith('{') and not json_str.startswith('['):
-            # Look for JSON object
-            json_match = re.search(r'\{[\s\S]*\}(?=\s*(?:```|$))', json_str)
-            if not json_match:
-                # Look for JSON array
-                json_match = re.search(r'\[[\s\S]*\](?=\s*(?:```|$))', json_str)
-            if json_match:
-                json_str = json_match.group(0)
-        
-        # Try to parse JSON
-        parsed = json.loads(json_str)
-        return parsed
-    except (json.JSONDecodeError, AttributeError) as e:
-        logger.error(f"❌ JSON parsing failed: {e}")
-        logger.error(f"Raw response: {response[:300]}")
-        return None
+from .parsers import (
+    extract_json_from_response,
+    extract_bullet_list,
+    extract_grade_data,
+    validate_parsed_resume,
+)
 
 
 def _get_ollama_service():
@@ -70,7 +35,7 @@ def _get_ollama_service():
         pass
     
     # Fallback to singleton instance
-    from .ollama_service import get_ollama_service
+    from ..ollama_service import get_ollama_service
     return get_ollama_service()
 
 
@@ -119,7 +84,7 @@ class LLMService:
             intensity: 'light', 'medium', or 'heavy'
             
         Returns:
-            Dict with polished bullets
+            Dict with success status and polished bullets
         """
         try:
             ollama = _get_ollama_service()
@@ -143,55 +108,33 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
             if not result.get("success"):
                 error_msg = result.get("error", "No response from Ollama. Please try again.")
                 logger.error(f"✗ Ollama generation failed: {error_msg}")
-                return {
-                    "success": False,
-                    "error": error_msg
-                }
+                return {"success": False, "error": error_msg}
             
-            logger.debug(f"Ollama response structure: {result}")
             response = result.get("data", {}).get("response", "")
             
             if not response:
                 logger.error("✗ No response text received from Ollama")
-                logger.error(f"Full response: {result}")
-                return {
-                    "success": False,
-                    "error": "No text response from Ollama. Please try again."
-                }
+                return {"success": False, "error": "No text response from Ollama. Please try again."}
             
             logger.debug(f"Raw Ollama response: {response[:500]}")
             
             # Parse response and extract bullet list
-            polished = _extract_json_from_response(response)
+            polished_bullets = extract_bullet_list(response)
             
-            # Handle different response formats
-            if polished and isinstance(polished, list) and len(polished) > 0:
-                # Validate each bullet
-                validated_bullets = [str(b).strip() for b in polished if b]
-                if validated_bullets:
-                    logger.info(f"✓ Got {len(validated_bullets)} polished bullets from JSON array")
-                    return {"success": True, "bullets": validated_bullets}
-
-            elif polished and isinstance(polished, dict) and "bullets" in polished:
-                bullet_list = polished.get("bullets", [])
-                if isinstance(bullet_list, list) and len(bullet_list) > 0:
-                    validated_bullets = [str(b).strip() for b in bullet_list if b]
-                    if validated_bullets:
-                        logger.info(f"✓ Got {len(validated_bullets)} polished bullets from JSON dict")
-                        return {"success": True, "bullets": validated_bullets}
-
+            if polished_bullets and len(polished_bullets) > 0:
+                logger.info(f"✓ Got {len(polished_bullets)} polished bullets")
+                return {"success": True, "bullets": polished_bullets}
+            
             # Fallback: if we got a single response, treat as one polished bullet
             if response and len(response) > 10:
                 logger.warning("⚠️  Could not parse JSON response, returning raw response as single bullet")
                 return {"success": True, "bullets": [response.strip()]}
-
-            # Last resort fallback
+            
             logger.error("✗ No valid response received from Ollama")
             return {"success": False, "error": "Ollama returned invalid response"}
                 
         except Exception as e:
             logger.error(f"✗ Error polishing bullets: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}
     
@@ -205,7 +148,7 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
             intensity: 'light', 'medium', or 'aggressive'
             
         Returns:
-            Dict with polished resume and summary of changes
+            Dict with success status and polished resume
         """
         try:
             ollama = _get_ollama_service()
@@ -221,21 +164,13 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
             if not result.get("success"):
                 error_msg = result.get("error", "No response from Ollama. Please try again.")
                 logger.error(f"✗ Ollama generation failed: {error_msg}")
-                return {
-                    "success": False,
-                    "error": error_msg
-                }
+                return {"success": False, "error": error_msg}
             
-            logger.debug(f"Ollama response structure: {result}")
             response = result.get("data", {}).get("response", "").strip()
             
             if not response:
                 logger.error("✗ No response text received from Ollama")
-                logger.error(f"Full response: {result}")
-                return {
-                    "success": False,
-                    "error": "No text response from Ollama. Please try again."
-                }
+                return {"success": False, "error": "No text response from Ollama. Please try again."}
             
             # Validate: Polished resume should contain key sections and reasonable length
             min_length = len(resume_text) * 0.4  # Should be at least 40% of original
@@ -253,7 +188,6 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
             
         except Exception as e:
             logger.error(f"✗ Error polishing resume: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}
     
@@ -266,7 +200,7 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
             resume_text: Resume content to grade
             
         Returns:
-            Dict with score and feedback
+            Dict with success status and grade data
         """
         try:
             ollama = _get_ollama_service()
@@ -296,58 +230,26 @@ Example format:
             if not result.get("success"):
                 error_msg = result.get("error", "No response from Ollama. Please try again.")
                 logger.error(f"✗ Ollama generation failed: {error_msg}")
-                return {
-                    "success": False,
-                    "error": error_msg
-                }
+                return {"success": False, "error": error_msg}
             
-            logger.debug(f"Ollama response structure: {result}")
             response = result.get("data", {}).get("response", "")
             
             if not response:
                 logger.error("✗ No response text received from Ollama")
-                logger.error(f"Full response: {result}")
-                return {
-                    "success": False,
-                    "error": "No text response from Ollama. Please try again."
-                }
+                return {"success": False, "error": "No text response from Ollama. Please try again."}
             
-            try:
-                # Extract JSON from response
-                import re
-                # Try to parse response as-is first (handles newlines in JSON correctly)
-                grade_data = None
-                try:
-                    grade_data = json.loads(response)
-                except json.JSONDecodeError:
-                    # If that fails, try extracting JSON block
-                    json_match = re.search(r'\{.*\}', response, re.DOTALL)
-                    if json_match:
-                        json_str = json_match.group()
-                        grade_data = json.loads(json_str)
-                    else:
-                        raise json.JSONDecodeError("No JSON object found in response", response, 0)
-                
-                # Validate required fields
-                required_fields = ['score', 'strengths', 'improvements', 'recommendations']
-                for field in required_fields:
-                    if field not in grade_data:
-                        grade_data[field] = grade_data.get(field, 0 if field == 'score' else [])
-                
+            # Extract grade data
+            grade_data = extract_grade_data(response)
+            
+            if grade_data:
                 logger.info(f"✓ Resume graded: {grade_data.get('score', 0)}/100")
                 return {"success": True, "grade": grade_data}
-            except (json.JSONDecodeError, AttributeError) as e:
-                logger.error(f"✗ Failed to parse JSON response: {e}")
-                logger.error(f"Response text: {response}")
-                # Return failure instead of fallback response
-                return {
-                    "success": False,
-                    "error": f"Failed to parse resume grading response: {str(e)}"
-                }
+            else:
+                logger.error("✗ Failed to parse grade data from response")
+                return {"success": False, "error": "Failed to parse resume grading response"}
                 
         except Exception as e:
             logger.error(f"✗ Error grading resume: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}
     
@@ -361,7 +263,7 @@ Example format:
             polished_resume: Polished resume text
             
         Returns:
-            Dict with success status and list of change descriptions
+            Dict with success status and list of changes
         """
         try:
             ollama = _get_ollama_service()
@@ -387,13 +289,10 @@ Example format:
             response = result.get("data", {}).get("response", "").strip()
             
             if not response:
-                return {
-                    "success": True,
-                    "changes": ["Resume enhanced with AI improvements"]
-                }
+                return {"success": True, "changes": ["Resume enhanced with AI improvements"]}
             
             # Parse JSON array from response
-            changes = _extract_json_from_response(response)
+            changes = extract_json_from_response(response)
             
             if isinstance(changes, list) and len(changes) > 0:
                 logger.info(f"✓ Generated {len(changes)} change descriptions")
@@ -410,30 +309,24 @@ Example format:
                 
         except Exception as e:
             logger.error(f"✗ Error generating change summary: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             # Always return success with fallback changes to not break UX
-            return {
-                "success": True,
-                "changes": ["Resume enhanced with AI improvements"]
-            }
+            return {"success": True, "changes": ["Resume enhanced with AI improvements"]}
     
     @staticmethod
     def parse_to_pdf_format(resume_text: str) -> Dict:
         """
         Parse resume text into structured PDF format.
-        Uses improved prompt that ensures all data is captured correctly.
         
         Args:
             resume_text: Raw resume text
             
         Returns:
-            Dict with parsed resume structure matching ResumData format
+            Dict with success status and parsed resume structure
         """
         try:
             ollama = _get_ollama_service()
             
-            # Use improved prompt that specifies exact JSON structure
             from core.prompts import parse_to_pdf_format_prompt
             prompt = parse_to_pdf_format_prompt(resume_text)
             
@@ -443,50 +336,27 @@ Example format:
             if not result.get("success"):
                 error_msg = result.get("error", "No response from Ollama. Please try again.")
                 logger.error(f"✗ Ollama generation failed: {error_msg}")
-                return {
-                    "success": False,
-                    "error": error_msg
-                }
+                return {"success": False, "error": error_msg}
             
-            logger.debug(f"Ollama response structure: {result}")
             response = result.get("data", {}).get("response", "")
             
             if not response:
                 logger.error("✗ No response text received from Ollama")
-                logger.error(f"Full response: {result}")
-                return {
-                    "success": False,
-                    "error": "No text response from Ollama. Please try again."
-                }
+                return {"success": False, "error": "No text response from Ollama. Please try again."}
             
             logger.debug(f"Raw Ollama response: {response[:500]}")
-            logger.info(f"Response length: {len(response)} characters")
             
-            # Parse response and extract structure using robust JSON parser
-            parsed = _extract_json_from_response(response)
+            # Parse response and extract structure
+            parsed = extract_json_from_response(response)
             
-            if parsed:
-                logger.info(f"✅ Successfully parsed resume structure from Ollama")
-                # Validate parsed data has expected top-level keys
-                logger.info(f"Parsed keys: {list(parsed.keys())}")
-                if 'contact' in parsed:
-                    logger.info(f"Contact name: {parsed.get('contact', {}).get('name', 'NOT FOUND')}")
-                if 'work_experience' in parsed:
-                    logger.info(f"Work experience entries: {len(parsed.get('work_experience', []))}")
-                if 'projects' in parsed:
-                    logger.info(f"Projects: {len(parsed.get('projects', []))}")
-                return {"success": True, "parsed_resume": parsed}
+            if parsed and validate_parsed_resume(parsed):
+                logger.info("✅ Successfully parsed resume structure from Ollama")
+                return {"success": True, "parsed_data": parsed}
             else:
-                logger.error(f"⚠️  Failed to parse JSON from response")
-                logger.error(f"Raw response: {response[:500]}")
-                # Return failure - don't try to work with unparsable data
-                return {
-                    "success": False,
-                    "error": "Failed to parse resume structure into JSON"
-                }
+                logger.error("✗ Parsed data did not match expected resume structure")
+                return {"success": False, "error": "Invalid resume structure returned by LLM"}
                 
         except Exception as e:
             logger.error(f"✗ Error parsing resume: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}

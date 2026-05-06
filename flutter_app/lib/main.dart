@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
-import 'constants/colors.dart';
-import 'constants/typography.dart';
-import 'screens/splash_screen.dart';
-import 'screens/my_resumes_screen.dart';
-import 'screens/polish_screen.dart';
-import 'screens/tailor_screen.dart';
-import 'screens/feedback_screen.dart';
+import 'config/colors.dart';
+import 'config/typography.dart';
+import 'features/splash/presentation/splash_screen.dart';
+import 'features/resumes/presentation/screens/my_resumes_screen.dart';
+import 'features/polish/presentation/screens/polish_screen.dart';
+import 'features/tailor/presentation/screens/tailor_screen.dart';
+import 'features/feedback/presentation/screens/feedback_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

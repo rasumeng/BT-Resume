@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/typography.dart';
+import '../../config/colors.dart';
+import '../../config/typography.dart';
 
 class DownloadOption {
   final String label;

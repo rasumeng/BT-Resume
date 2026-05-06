@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../constants/colors.dart';
-import '../constants/typography.dart';
-import '../services/resume_file_service.dart';
-import 'my_resumes_screen.dart';
+import '../../../config/colors.dart';
+import '../../../config/typography.dart';
+import '../../../core/services/resume_file_service.dart';
+import '../../resumes/presentation/screens/my_resumes_screen.dart';
 
 // ============================================================================
 // Init Stages Enum

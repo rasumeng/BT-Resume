@@ -2,7 +2,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
-import '../constants/app_constants.dart';
+import '../../config/app_constants.dart';
 import '../models/resume_model.dart';
 
 /// Retry interceptor for handling transient network failures
@@ -490,11 +490,12 @@ class ApiService {
     return false;
   }
 
-  /// Tailor resume to job description
-  Future<String> tailorResume(
+  /// Tailor resume to job description with comprehensive analysis
+  Future<Map<String, dynamic>> tailorResume(
     String resumeText,
-    String jobDescription,
-  ) async {
+    String jobDescription, {
+    String intensity = 'medium',
+  }) async {
     try {
       // Ensure backend is ready before attempting to tailor
       final isHealthy = await _waitForBackend(maxAttempts: 3);
@@ -509,6 +510,7 @@ class ApiService {
         data: {
           'resume_text': resumeText,
           'job_description': jobDescription,
+          'intensity': intensity,
         },
       );
 
@@ -525,10 +527,67 @@ class ApiService {
         throw Exception(data['error'] ?? 'Failed to tailor resume');
       }
 
-      logger.i('✓ Tailored resume');
-      return data['tailored_resume'] as String;
+      logger.i('✓ Tailored resume with analysis');
+      // Return full response including analysis data
+      return {
+        'tailored_resume': data['tailored_resume'] as String? ?? '',
+        'overall_confidence': data['overall_confidence'] as int? ?? 0,
+        'category_scores': (data['category_scores'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
+        'matches': (data['matches'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
+        'gaps': data['gaps'] as Map<String, dynamic>? ?? {'missing_skills': [], 'missing_keywords': [], 'suggestions': []},
+        'changes_summary': data['changes_summary'] as String? ?? '',
+      };
     } catch (e) {
       logger.e('✗ Error tailoring resume: $e');
+      rethrow;
+    }
+  }
+
+  /// Analyze how well resume fits a job description (without tailoring)
+  Future<Map<String, dynamic>> analyzeFit(
+    String resumeText,
+    String jobDescription,
+  ) async {
+    try {
+      // Ensure backend is ready before attempting to analyze
+      final isHealthy = await _waitForBackend(maxAttempts: 3);
+      if (!isHealthy) {
+        throw Exception(
+          'Backend is not responding. Please ensure the Flask backend is running on localhost:5000'
+        );
+      }
+
+      final response = await _dio.post(
+        '/analyze-fit',
+        data: {
+          'resume_text': resumeText,
+          'job_description': jobDescription,
+        },
+      );
+
+      // Check for HTTP errors
+      if (response.statusCode! >= 400) {
+        logger.e('✗ HTTP ${response.statusCode}: ${response.statusMessage}');
+        final errorMsg = (response.data as Map<String, dynamic>?)?['error'];
+        throw Exception(errorMsg ?? 'Failed to analyze fit (HTTP ${response.statusCode})');
+      }
+
+      final data = response.data as Map<String, dynamic>;
+
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Failed to analyze fit');
+      }
+
+      logger.i('✓ Analyzed fit');
+      // Return analysis data without tailored_resume
+      return {
+        'overall_confidence': data['overall_confidence'] as int? ?? 0,
+        'category_scores': (data['category_scores'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
+        'matches': (data['matches'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
+        'gaps': data['gaps'] as Map<String, dynamic>? ?? {'missing_skills': [], 'missing_keywords': [], 'suggestions': []},
+      };
+    } catch (e) {
+      logger.e('✗ Error analyzing fit: $e');
       rethrow;
     }
   }

@@ -1,4 +1,44 @@
-def bullet_polish_prompt(bullet: str, mode: str = "medium") -> str:
+"""
+DEPRECATED: This module is maintained for backward compatibility.
+Please import from core.prompts package instead.
+
+Example:
+    from core.prompts import bullet_polish_prompt, resume_polish_prompt
+"""
+
+import warnings
+
+warnings.warn(
+    "Importing from core.prompts as a module is deprecated. "
+    "Please use from core.prompts import instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
+# Re-export all prompt functions from the new package structure
+from prompts import (
+    bullet_polish_prompt,
+    experience_updater_prompt,
+    resume_polish_prompt,
+    get_changes_summary_prompt,
+    job_tailor_prompt,
+    get_grader_prompt,
+    parse_resume_structure_prompt,
+    parse_to_pdf_format_prompt,
+    parse_resume_to_pdf_format_prompt,
+)
+
+__all__ = [
+    "bullet_polish_prompt",
+    "experience_updater_prompt",
+    "resume_polish_prompt",
+    "get_changes_summary_prompt",
+    "job_tailor_prompt",
+    "get_grader_prompt",
+    "parse_resume_structure_prompt",
+    "parse_to_pdf_format_prompt",
+    "parse_resume_to_pdf_format_prompt",
+]
     mode_instructions = {
         "light": (
             "Make minimal changes. Only fix weak or vague verbs and tighten wording. "

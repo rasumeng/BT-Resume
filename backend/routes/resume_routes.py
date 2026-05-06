@@ -11,7 +11,7 @@ import json
 logger = logging.getLogger(__name__)
 
 from services.file_service import FileService
-from services.llm_service import LLMService
+from services.llm import LLMService
 from services.feedback_service import FeedbackService
 
 # Create blueprint
@@ -65,10 +65,10 @@ def save_resume_pdf():
         # Test import right here in the route
         logger.info("Testing imports in route handler...")
         try:
-            from core.pdf_generator import generate_pdf as test_pdf
-            logger.info("✓ Successfully imported generate_pdf from core.pdf_generator")
+            from core.pdf import generate_pdf as test_pdf
+            logger.info("✓ Successfully imported generate_pdf from core.pdf")
         except ImportError as ie:
-            logger.error(f"✗ Failed to import from core.pdf_generator: {ie}")
+            logger.error(f"✗ Failed to import from core.pdf: {ie}")
         
         data = request.get_json()
         filename = data.get('filename')
@@ -284,7 +284,60 @@ def get_polish_changes():
 @resume_bp.route('/tailor-resume', methods=['POST'])
 def tailor_resume():
     """
-    Tailor a resume to a job description.
+    Tailor a resume to a job description with comprehensive analysis.
+    
+    Request JSON:
+    {
+        "resume_text": "...",
+        "job_description": "...",
+        "intensity": "light|medium|heavy" (optional, default: "medium")
+    }
+    """
+    from services.job_tailor_service import JobTailorService
+    from dataclasses import asdict
+    
+    data = request.get_json()
+    resume_text = data.get('resume_text')
+    job_description = data.get('job_description')
+    intensity = data.get('intensity', 'medium')
+    
+    if not resume_text or not job_description:
+        return jsonify({"success": False, "error": "resume_text and job_description required"}), 400
+    
+    try:
+        # Use JobTailorService for comprehensive analysis with LLM
+        tailor_result = JobTailorService.tailor_resume(resume_text, job_description, intensity)
+        
+        if not tailor_result:
+            return jsonify({"success": False, "error": "Failed to tailor resume"}), 500
+        
+        # Convert dataclass to dict with nested conversions
+        result_dict = {
+            "success": True,
+            "overall_confidence": tailor_result.overall_confidence,
+            "category_scores": [asdict(cs) for cs in tailor_result.category_scores],
+            "matches": [asdict(m) for m in tailor_result.matches],
+            "gaps": {
+                "missing_skills": tailor_result.gaps.missing_skills,
+                "missing_keywords": tailor_result.gaps.missing_keywords,
+                "suggestions": tailor_result.gaps.suggestions,
+            },
+            "tailored_resume": tailor_result.tailored_resume_text,
+            "changes_summary": tailor_result.changes_summary,
+        }
+        
+        logger.info(f"✓ Tailor result: confidence={tailor_result.overall_confidence}%, matches={len(tailor_result.matches)}")
+        return jsonify(result_dict), 200
+    
+    except Exception as e:
+        logger.error(f"✗ Error in tailor_resume route: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@resume_bp.route('/analyze-fit', methods=['POST'])
+def analyze_fit():
+    """
+    Analyze how well a resume fits a job description without tailoring.
+    Returns confidence score, category breakdown, and matches.
     
     Request JSON:
     {
@@ -292,6 +345,9 @@ def tailor_resume():
         "job_description": "..."
     }
     """
+    from services.job_tailor_service import JobTailorService
+    from dataclasses import asdict
+    
     data = request.get_json()
     resume_text = data.get('resume_text')
     job_description = data.get('job_description')
@@ -299,9 +355,32 @@ def tailor_resume():
     if not resume_text or not job_description:
         return jsonify({"success": False, "error": "resume_text and job_description required"}), 400
     
-    result = LLMService.tailor_resume(resume_text, job_description)
-    status_code = 200 if result.get('success') else 500
-    return jsonify(result), status_code
+    try:
+        # Use JobTailorService for analysis only (no tailoring)
+        tailor_result = JobTailorService.tailor_resume(resume_text, job_description, intensity='light')
+        
+        if not tailor_result:
+            return jsonify({"success": False, "error": "Failed to analyze fit"}), 500
+        
+        # Return just the analysis data, not the tailored resume
+        result_dict = {
+            "success": True,
+            "overall_confidence": tailor_result.overall_confidence,
+            "category_scores": [asdict(cs) for cs in tailor_result.category_scores],
+            "matches": [asdict(m) for m in tailor_result.matches],
+            "gaps": {
+                "missing_skills": tailor_result.gaps.missing_skills,
+                "missing_keywords": tailor_result.gaps.missing_keywords,
+                "suggestions": tailor_result.gaps.suggestions,
+            },
+        }
+        
+        logger.info(f"✓ Fit analysis result: confidence={tailor_result.overall_confidence}%, matches={len(tailor_result.matches)}")
+        return jsonify(result_dict), 200
+    
+    except Exception as e:
+        logger.error(f"✗ Error in analyze_fit route: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @resume_bp.route('/grade-resume', methods=['POST'])
 def grade_resume():

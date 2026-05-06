@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/typography.dart';
-import '../services/api_service.dart';
+import '../../../../config/colors.dart';
+import '../../../../config/typography.dart';
+import '../../../../core/services/api_service.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({Key? key}) : super(key: key);

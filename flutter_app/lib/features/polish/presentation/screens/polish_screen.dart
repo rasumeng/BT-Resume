@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:logger/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import '../constants/colors.dart';
-import '../constants/typography.dart';
-import '../services/resume_file_service.dart';
-import '../services/api_service.dart';
-import '../widgets/download_dialog.dart';
+import '../../../../config/colors.dart';
+import '../../../../config/typography.dart';
+import '../../../../core/services/resume_file_service.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../shared/widgets/download_dialog.dart';
 
 // ============================================================================
 // PolishChange Model

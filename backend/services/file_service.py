@@ -100,7 +100,7 @@ class FileService:
             
             # Import inside method to avoid Flask module caching issues
             logger.info("Importing PDF generation modules...")
-            from core.pdf_generator import generate_pdf
+            from core.pdf import generate_pdf
             from core.resume_model import ResumData
             logger.info("✓ Imported generate_pdf and ResumData")
                 
@@ -169,7 +169,7 @@ class FileService:
             logger.info(f"🚀 Starting polished resume PDF generation for {filename}")
             
             # Step 1: Parse plain text into structured JSON
-            from backend.services.llm_service import LLMService
+            from backend.services.llm import LLMService
             parse_result = LLMService.parse_to_pdf_format(text_content)
             
             if not parse_result.get("success"):
@@ -418,7 +418,7 @@ class FileService:
             # Step 2: Parse and cache JSON structure (if not provided)
             if parsed_json is None:
                 logger.info("Step 2: Parsing text into structured JSON...")
-                from backend.services.llm_service import LLMService
+                from backend.services.llm import LLMService
                 parse_result = LLMService.parse_to_pdf_format(altered_text)
                 
                 if not parse_result.get("success"):
@@ -434,7 +434,7 @@ class FileService:
             # Step 3: Build ResumData and generate PDF
             logger.info("Step 3: Building ResumData object...")
             from core.resume_model import ResumData
-            from core.pdf_generator import generate_pdf
+            from core.pdf import generate_pdf
             
             try:
                 resume_data = ResumData.from_llm_json(parsed_json)
