@@ -10,6 +10,7 @@ from dataclasses import dataclass, asdict
 logger = logging.getLogger(__name__)
 
 from services.llm import LLMService
+from core.prompts import job_tailor_prompt
 
 
 @dataclass
@@ -221,7 +222,7 @@ Return ONLY valid JSON array, no markdown or explanations."""
         job_requirements: Dict,
         matches: List[TailorMatch]
     ) -> GapAnalysis:
-        """Identify skills and keywords missing from resume."""
+        """Identify skills and keywords missing from resume using LLM."""
         try:
             required_skills = job_requirements.get("required_skills", [])
             matched_skills = {m.keyword.lower() for m in matches if m.category == "Skills"}
@@ -230,20 +231,37 @@ Return ONLY valid JSON array, no markdown or explanations."""
                 skill for skill in required_skills
                 if skill.lower() not in matched_skills and skill.lower() not in resume_text.lower()
             ][:3]  # Top 3 missing
-            
-            missing_keywords = ["Docker", "Kubernetes", "CI/CD"]  # Example - would be dynamic
-            missing_keywords = [k for k in missing_keywords if k.lower() not in resume_text.lower()][:2]
-            
-            suggestions = [
-                "Add specific metrics to quantify your achievements",
-                "Emphasize cross-functional collaboration experience",
-                "Highlight process improvements you've implemented"
-            ]
+
+            prompt = f"""Analyze this resume against the job requirements to identify gaps.
+RESUME:
+{resume_text[:2500]}
+REQUIRED SKILLS (already analyzed): {', '.join(required_skills[:10])}
+ALREADY MATCHED: {', '.join([m.keyword for m in matches])}
+Return ONLY valid JSON with this exact structure:
+{{
+    "missing_keywords": ["top 3-5 important terms from job description not clearly present in resume"],
+    "suggestions": ["specific actionable suggestion 1", "specific actionable suggestion 2", "specific actionable suggestion 3"]
+}}
+Rules:
+- missing_keywords: industry terms, tools, frameworks from the job that are not well-represented in the resume
+- suggestions: concrete, specific ways to address gaps using EXISTING experience — do not invent new skills
+- Return ONLY valid JSON, no markdown, no explanation."""
+            result = LLMService.call_ollama(prompt)
+            if result:
+                try:
+                    parsed = json.loads(result)
+                    return GapAnalysis(
+                        missing_skills=missing_skills,
+                        missing_keywords=parsed.get("missing_keywords", [])[:3],
+                        suggestions=parsed.get("suggestions", [])[:3]
+                    )
+                except (json.JSONDecodeError, KeyError):
+                    logger.warning("⚠️  Could not parse gap analysis JSON")
             
             return GapAnalysis(
                 missing_skills=missing_skills,
-                missing_keywords=missing_keywords,
-                suggestions=suggestions
+                missing_keywords=[],
+                suggestions=["Add specific metrics to quantify your achievements", "Emphasize cross-functional collaboration", "Highlight process improvements"]
             )
             
         except Exception as e:
@@ -286,29 +304,16 @@ Return ONLY valid JSON array, no markdown or explanations."""
             required_skills = job_requirements.get("required_skills", [])
             key_responsibilities = job_requirements.get("key_responsibilities", [])
             role_title = job_requirements.get("role_title", "Position")
-            
-            intensity_instructions = {
-                "light": "Make subtle reframings to emphasize matching areas. Keep 90% of original content.",
-                "medium": "Reorder and reframe content to highlight relevant skills and experience. Keep 80% of original content.",
-                "heavy": "Extensively reframe all content to maximize relevance to the job. Can rewrite completely, keeping the core facts."
-            }
-            
-            prompt = f"""You are an expert resume tailoring specialist. Tailor this resume for the following position.
 
-POSITION: {role_title}
-REQUIRED SKILLS: {', '.join(required_skills[:5])}
-KEY RESPONSIBILITIES: {chr(10).join(f'- {r}' for r in key_responsibilities[:5])}
+            combined_job = f"""Position: {role_title}
+Required Skills: {', '.join(required_skills[:5])}
+Key Responsibilities: {'; '.join(key_responsibilities[:5])}"""
 
-ORIGINAL RESUME:
-{resume_text}
-
-INSTRUCTIONS:
-- {intensity_instructions.get(intensity, intensity_instructions['medium'])}
-- Keep all real experience and accomplishments
-- Reframe bullets to highlight relevance to the job requirements
-- Don't add fake experience
-- Maintain the same format and structure
-- Return ONLY the tailored resume, no explanations"""
+            prompt = job_tailor_prompt(
+                resume_section=resume_text,
+                job_description=combined_job,
+                intensity=intensity
+            )
             
             # Call LLM to generate tailored resume
             result = LLMService.call_ollama(prompt)

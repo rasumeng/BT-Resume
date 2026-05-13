@@ -605,11 +605,11 @@ class ApiService {
       }
 
       // Determine if it's a filename or actual text
-      // If it contains typical filename extensions, treat as filename, otherwise as text
       final isFilename = resumeOrFilename.endsWith('.pdf') || 
                         resumeOrFilename.endsWith('.txt') ||
                         (!resumeOrFilename.contains('\n') && resumeOrFilename.length < 500);
       
+      // Send as filename in query param (more reliable than JSON body for special chars)
       final requestData = isFilename 
           ? {'filename': resumeOrFilename}
           : {'resume_text': resumeOrFilename};

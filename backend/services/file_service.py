@@ -326,9 +326,58 @@ class FileService:
             resumes_dir = get_resumes_dir()
             file_path = resumes_dir / filename
             
+            # DEBUG: Log the exact path being searched
+            logger.warning(f"🔍 DEBUG: Looking for resume...")
+            logger.warning(f"   resumes_dir: {resumes_dir}")
+            logger.warning(f"   filename: {filename}")
+            logger.warning(f"   full file_path: {file_path}")
+            logger.warning(f"   file_path exists: {file_path.exists()}")
+
+            def _try_resolve_alternate_name(name: str) -> Optional[Path]:
+                """Resolve common UI/generated filename variants to an existing file."""
+                stem = Path(name).stem
+                suffix = Path(name).suffix.lower()
+
+                # Common naming variants seen in app flows.
+                variants = {
+                    stem,
+                    stem.replace(" - AI", ""),
+                    stem.replace("_AI", ""),
+                    stem.replace(" AI", ""),
+                }
+
+                candidate_exts = [suffix] if suffix in {".pdf", ".txt"} else [".pdf", ".txt"]
+                for variant in variants:
+                    for ext in candidate_exts:
+                        candidate = resumes_dir / f"{variant}{ext}"
+                        if candidate.exists():
+                            return candidate
+
+                # Last resort: pick first close filename match.
+                try:
+                    files = [p for p in resumes_dir.iterdir() if p.is_file() and p.suffix.lower() in {".pdf", ".txt"}]
+                    normalized = stem.lower().replace("- ai", "").strip()
+                    for p in files:
+                        p_norm = p.stem.lower().replace("- ai", "").strip()
+                        if p_norm == normalized or p_norm.startswith(normalized) or normalized.startswith(p_norm):
+                            return p
+                except Exception:
+                    pass
+
+                return None
+            
             # If not found in resumes/, check flutter_app/resumes/
             if not file_path.exists():
+                resolved = _try_resolve_alternate_name(filename)
+                if resolved is not None:
+                    file_path = resolved
+                    filename = resolved.name
+                    logger.info(f"Resolved resume filename to existing file: {filename}")
+
+            if not file_path.exists():
                 flutter_resumes = Path.cwd() / "flutter_app" / "resumes" / filename
+                logger.warning(f"🔍 DEBUG: Checking fallback path: {flutter_resumes}")
+                logger.warning(f"   fallback exists: {flutter_resumes.exists()}")
                 if flutter_resumes.exists():
                     file_path = flutter_resumes
                     logger.info(f"Found resume in flutter_app/resumes: {filename}")

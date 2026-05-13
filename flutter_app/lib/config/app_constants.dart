@@ -19,7 +19,7 @@ class AppConstants {
   
   // Timeouts
   static const int connectionTimeout = 30000; // 30 seconds
-  static const int receiveTimeout = 60000;    // 60 seconds for LLM calls
+  static const int receiveTimeout = 180000;   // 180 seconds (3 min) for LLM calls
   
   // Backend startup
   static const int backendStartupTimeout = 30000; // 30 seconds max wait

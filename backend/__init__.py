@@ -1,1 +1,1 @@
-"""Backend package for Resume AI."""
+"""Backend package for BT-Resume."""

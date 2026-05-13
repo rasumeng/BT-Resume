@@ -1,5 +1,5 @@
 """
-Backend configuration for Resume AI.
+Backend configuration for BT-Resume.
 Handles ports, paths, and environment setup.
 """
 
@@ -10,7 +10,7 @@ from pathlib import Path
 # ─── Flask Configuration ───
 FLASK_HOST = "127.0.0.1"  # Only localhost (secure for local app)
 FLASK_PORT = 5000
-FLASK_DEBUG = False
+FLASK_DEBUG = True
 
 # ─── Ollama Configuration ───
 OLLAMA_HOST = "http://localhost:11434"
@@ -18,20 +18,20 @@ OLLAMA_HOST = "http://localhost:11434"
 # ─── Paths ───
 def get_app_data_dir():
     r"""Get the user's app data directory (platform-specific).
-    Windows: C:\Users\<User>\Documents\Resume AI
-    macOS: ~/Documents/Resume AI
-    Linux: ~/.local/share/Resume AI
+    Windows: C:\Users\<User>\Documents\BT-Resume
+    macOS: ~/Documents/BT-Resume
+    Linux: ~/.local/share/BT-Resume
     """
     if platform.system() == "Windows":
         # Use Documents folder on Windows
         user_home = Path(os.path.expanduser("~"))
-        app_data = user_home / "Documents" / "Resume AI"
+        app_data = user_home / "Documents" / "BT-Resume"
     elif platform.system() == "Darwin":  # macOS
         user_home = Path(os.path.expanduser("~"))
-        app_data = user_home / "Documents" / "Resume AI"
+        app_data = user_home / "Documents" / "BT-Resume"
     else:  # Linux and others
         user_home = Path(os.path.expanduser("~"))
-        app_data = user_home / ".local" / "share" / "Resume AI"
+        app_data = user_home / ".local" / "share" / "BT-Resume"
     
     app_data.mkdir(parents=True, exist_ok=True)
     return app_data

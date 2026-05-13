@@ -28,12 +28,12 @@ class ResumeFileService {
   }
 
   /// Get the resumes folder path in user's documents directory
-  /// Returns: C:\Users\<User>\Documents\Resume AI\resumes on Windows
-  ///          ~/Documents/Resume AI/resumes on macOS/Linux
+  /// Returns: C:\Users\<User>\Documents\BT-Resume\resumes on Windows
+  ///          ~/Documents/BT-Resume/resumes on macOS/Linux
   static Future<String> getResumesFolderPath() async {
     try {
       final Directory documentDir = await getApplicationDocumentsDirectory();
-      final String appDataPath = p.join(documentDir.path, 'Resume AI');
+      final String appDataPath = p.join(documentDir.path, 'BT-Resume');
       return p.join(appDataPath, resumesFolderName);
     } catch (e) {
       logger.e('Error getting resumes folder path: $e');
@@ -43,12 +43,12 @@ class ResumeFileService {
   }
 
   /// Get the outputs folder path in user's documents directory
-  /// Returns: C:\Users\<User>\Documents\Resume AI\outputs on Windows
-  ///          ~/Documents/Resume AI/outputs on macOS/Linux
+  /// Returns: C:\Users\<User>\Documents\BT-Resume\outputs on Windows
+  ///          ~/Documents/BT-Resume/outputs on macOS/Linux
   static Future<String> getOutputsFolderPath() async {
     try {
       final Directory documentDir = await getApplicationDocumentsDirectory();
-      final String appDataPath = p.join(documentDir.path, 'Resume AI');
+      final String appDataPath = p.join(documentDir.path, 'BT-Resume');
       return p.join(appDataPath, 'outputs');
     } catch (e) {
       logger.e('Error getting outputs folder path: $e');
@@ -57,7 +57,7 @@ class ResumeFileService {
     }
   }
 
-  /// List all PDF files in the resumes folder (Documents/Resume AI/resumes)
+  /// List all PDF files in the resumes folder (Documents/BT-Resume/resumes)
   static Future<List<File>> listResumeFiles() async {
     try {
       // Ensure the folder exists first
@@ -152,6 +152,25 @@ class ResumeFileService {
     } catch (e) {
       logger.e('Error downloading resume: $e');
       return null;
+    }
+  }
+
+  /// Delete a resume file
+  /// Returns: true if successful, false otherwise
+  static Future<bool> deleteResume(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+        logger.i('✓ Deleted resume: $filePath');
+        return true;
+      } else {
+        logger.w('Resume file not found: $filePath');
+        return false;
+      }
+    } catch (e) {
+      logger.e('Error deleting resume: $e');
+      return false;
     }
   }
 }

@@ -1,64 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:path/path.dart' as p;
+import 'package:logger/logger.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../../../config/colors.dart';
 import '../../../../config/typography.dart';
 import '../../../../core/services/resume_file_service.dart';
-import '../../../../core/services/api_service.dart';
+import '../../../../shared/widgets/custom_dropdown.dart';
 import '../../../../shared/widgets/download_dialog.dart';
-
-// ============================================================================
-// TailorMatch Model
-// ============================================================================
-class TailorMatch {
-  /* MEMBERS */
-  final String category;
-  final String keyword;
-  final String relevance;
-  final String source;
-
-  /* CONSTRUCTOR */
-  TailorMatch({
-    required this.category,
-    required this.keyword,
-    required this.relevance,
-    required this.source,
-  });
-}
-
-// ============================================================================
-// CategoryScore Model
-// ============================================================================
-class CategoryScore {
-  /* MEMBERS */
-  final String category;
-  final int score;
-
-  /* CONSTRUCTOR */
-  CategoryScore({
-    required this.category,
-    required this.score,
-  });
-}
-
-// ============================================================================
-// GapAnalysis Model
-// ============================================================================
-class GapAnalysis {
-  /* MEMBERS */
-  final List<String> missingSkills;
-  final List<String> missingKeywords;
-  final List<String> suggestions;
-
-  /* CONSTRUCTOR */
-  GapAnalysis({
-    required this.missingSkills,
-    required this.missingKeywords,
-    required this.suggestions,
-  });
-}
-// ============================================================================
+import '../controllers/tailor_controller.dart';
+import '../models/tailor_models.dart';
 
 // ============================================================================
 // TailorScreen StatefulWidget
@@ -82,10 +32,11 @@ class _TailorScreenState extends State<TailorScreen> {
   bool isTailoring = false;
   bool hasTailored = false;
   bool isGeneratingPdf = false;
-  bool showBeforeTailorPreview = false;
   bool hasSeenFit = false;
   bool userChoseToTailor = false;
   String tailorIntensity = 'medium'; // 'light' | 'medium' | 'heavy'
+  File? tailoredPdfFile;
+  bool showOriginalPdf = false;
   int overallConfidence = 0;
   List<CategoryScore> categoryScores = [];
   List<TailorMatch> tailorMatches = [];
@@ -93,12 +44,14 @@ class _TailorScreenState extends State<TailorScreen> {
   String changesSummary = '';
   String originalResumeText = '';
   String tailoredResumeText = '';
-  final ApiService _apiService = ApiService();
+  final TailorController _tailorController = TailorController();
+  final logger = Logger();
 
   /* TEXT CONTROLLERS */
   final TextEditingController jobPositionController = TextEditingController();
   final TextEditingController jobCompanyController = TextEditingController();
-  final TextEditingController jobDescriptionController = TextEditingController();
+  final TextEditingController jobDescriptionController =
+      TextEditingController();
 
   // --------------------------------------------------------------------------
   // LIFECYCLE: initState
@@ -125,7 +78,7 @@ class _TailorScreenState extends State<TailorScreen> {
   // --------------------------------------------------------------------------
   Future<void> _loadResumeFiles() async {
     try {
-      final files = await ResumeFileService.listResumeFiles();
+      final files = await _tailorController.loadResumeFiles();
       setState(() {
         resumeFiles = files;
         isLoading = false;
@@ -165,22 +118,17 @@ class _TailorScreenState extends State<TailorScreen> {
     try {
       setState(() {
         isTailoring = true;
+        tailoredPdfFile = null;
+        showOriginalPdf = false;
       });
 
       // Get the selected resume file
       final resumeFile = resumeFiles[selectedResumeIndex];
-      final fileName = p.basename(resumeFile.path);
+      final fileName = ResumeFileService.getFileName(resumeFile.path);
       print('📋 Starting tailor for: $fileName');
 
       // Extract text from resume
-      String resumeText;
-      if (resumeFile.path.toLowerCase().endsWith('.pdf')) {
-        print('🔍 Extracting text from PDF...');
-        resumeText = await _apiService.extractPdfText(resumeFile);
-      } else {
-        print('📄 Reading text file...');
-        resumeText = await resumeFile.readAsString();
-      }
+      final resumeText = await _tailorController.extractResumeText(resumeFile);
 
       setState(() {
         originalResumeText = resumeText;
@@ -193,52 +141,49 @@ class _TailorScreenState extends State<TailorScreen> {
       print('✓ Extracted ${resumeText.length} characters from resume');
       print('🚀 Calling tailor API with LLM analysis...');
 
-      // Call the tailor API with LLM analysis
-      final tailorResult = await _apiService.tailorResume(
-        resumeText,
-        jobDescriptionController.text,
+      final tailorResult = await _tailorController.tailorResume(
+        resumeText: resumeText,
+        jobDescription: jobDescriptionController.text,
         intensity: tailorIntensity,
       );
 
-      print('✓ Received tailored resume with analysis: ${tailorResult['tailored_resume'].length} characters');
-
-      // Parse the analysis data from the backend
-      final overallConfidenceValue = tailorResult['overall_confidence'] as int? ?? 0;
-      final categoryScoresList = (tailorResult['category_scores'] as List?)?.map((e) {
-        final scoreMap = e as Map<String, dynamic>;
-        return CategoryScore(
-          category: scoreMap['category'] as String? ?? 'Unknown',
-          score: scoreMap['score'] as int? ?? 0,
-        );
-      }).toList() ?? [];
-      
-      final matchesList = (tailorResult['matches'] as List?)?.map((e) {
-        final matchMap = e as Map<String, dynamic>;
-        return TailorMatch(
-          category: matchMap['category'] as String? ?? 'Keywords',
-          keyword: matchMap['keyword'] as String? ?? '',
-          relevance: '${matchMap['relevance'] as int? ?? 0}%',
-          source: matchMap['source'] as String? ?? 'Resume content',
-        );
-      }).toList() ?? [];
-      
-      final gapsData = tailorResult['gaps'] as Map<String, dynamic>? ?? {};
-      final gapAnalysis = GapAnalysis(
-        missingSkills: (gapsData['missing_skills'] as List?)?.cast<String>() ?? [],
-        missingKeywords: (gapsData['missing_keywords'] as List?)?.cast<String>() ?? [],
-        suggestions: (gapsData['suggestions'] as List?)?.cast<String>() ?? [],
+      print(
+        '✓ Received tailored resume with analysis: ${tailorResult.tailoredResume.length} characters',
       );
 
       setState(() {
         hasTailored = true;
         isTailoring = false;
-        tailoredResumeText = tailorResult['tailored_resume'] as String? ?? '';
-        overallConfidence = overallConfidenceValue;
-        categoryScores = categoryScoresList;
-        tailorMatches = matchesList;
-        tailorGaps = gapAnalysis;
-        changesSummary = tailorResult['changes_summary'] as String? ?? 'Resume tailored to match job description.';
+        tailoredResumeText = tailorResult.tailoredResume;
+        overallConfidence = tailorResult.overallConfidence;
+        categoryScores = tailorResult.categoryScores;
+        tailorMatches = tailorResult.matches;
+        tailorGaps = tailorResult.gaps;
+        changesSummary = tailorResult.changesSummary;
       });
+
+      // Generate tailored PDF for preview
+      try {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final pdfFilename = 'tailored_$timestamp.pdf';
+
+        final saveResult = await _tailorController.saveTailoredTextPdf(
+          filename: pdfFilename,
+          tailoredResumeText: tailoredResumeText,
+        );
+
+        if (saveResult['success'] && saveResult['path'] != null) {
+          final pdfFile = File(saveResult['path']);
+          if (await pdfFile.exists()) {
+            setState(() {
+              tailoredPdfFile = pdfFile;
+              showOriginalPdf = false;
+            });
+          }
+        }
+      } catch (e) {
+        logger.w('⚠️  Failed to generate tailored PDF preview: $e');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -272,12 +217,13 @@ class _TailorScreenState extends State<TailorScreen> {
       hasSeenFit = false;
       userChoseToTailor = false;
       hasTailored = false;
+      tailoredPdfFile = null;
+      showOriginalPdf = false;
       tailorMatches = [];
       categoryScores = [];
       tailorGaps = null;
       overallConfidence = 0;
       changesSummary = '';
-      showBeforeTailorPreview = false;
       jobPositionController.clear();
       jobCompanyController.clear();
       jobDescriptionController.clear();
@@ -315,18 +261,11 @@ class _TailorScreenState extends State<TailorScreen> {
 
       // Get the selected resume file
       final resumeFile = resumeFiles[selectedResumeIndex];
-      final fileName = p.basename(resumeFile.path);
+      final fileName = ResumeFileService.getFileName(resumeFile.path);
       print('📋 Starting fit analysis for: $fileName');
 
       // Extract text from resume
-      String resumeText;
-      if (resumeFile.path.toLowerCase().endsWith('.pdf')) {
-        print('🔍 Extracting text from PDF...');
-        resumeText = await _apiService.extractPdfText(resumeFile);
-      } else {
-        print('📄 Reading text file...');
-        resumeText = await resumeFile.readAsString();
-      }
+      final resumeText = await _tailorController.extractResumeText(resumeFile);
 
       if (resumeText.isEmpty) {
         throw Exception('Resume text is empty');
@@ -335,49 +274,23 @@ class _TailorScreenState extends State<TailorScreen> {
       print('✓ Extracted ${resumeText.length} characters from resume');
       print('🚀 Calling fit analysis API with LLM...');
 
-      // Call the fit analysis API with LLM
-      final analysisResult = await _apiService.analyzeFit(
-        resumeText,
-        jobDescriptionController.text,
+      final analysisResult = await _tailorController.analyzeFit(
+        resumeText: resumeText,
+        jobDescription: jobDescriptionController.text,
       );
 
-      print('✓ Received fit analysis: ${analysisResult['overall_confidence']}% confidence');
-
-      // Parse the analysis data from the backend
-      final overallConfidenceValue = analysisResult['overall_confidence'] as int? ?? 0;
-      final categoryScoresList = (analysisResult['category_scores'] as List?)?.map((e) {
-        final scoreMap = e as Map<String, dynamic>;
-        return CategoryScore(
-          category: scoreMap['category'] as String? ?? 'Unknown',
-          score: scoreMap['score'] as int? ?? 0,
-        );
-      }).toList() ?? [];
-      
-      final matchesList = (analysisResult['matches'] as List?)?.map((e) {
-        final matchMap = e as Map<String, dynamic>;
-        return TailorMatch(
-          category: matchMap['category'] as String? ?? 'Keywords',
-          keyword: matchMap['keyword'] as String? ?? '',
-          relevance: '${matchMap['relevance'] as int? ?? 0}%',
-          source: matchMap['source'] as String? ?? 'Resume content',
-        );
-      }).toList() ?? [];
-      
-      final gapsData = analysisResult['gaps'] as Map<String, dynamic>? ?? {};
-      final gapAnalysis = GapAnalysis(
-        missingSkills: (gapsData['missing_skills'] as List?)?.cast<String>() ?? [],
-        missingKeywords: (gapsData['missing_keywords'] as List?)?.cast<String>() ?? [],
-        suggestions: (gapsData['suggestions'] as List?)?.cast<String>() ?? [],
+      print(
+        '✓ Received fit analysis: ${analysisResult.overallConfidence}% confidence',
       );
 
       setState(() {
         hasSeenFit = true;
         isTailoring = false;
         userChoseToTailor = false;
-        overallConfidence = overallConfidenceValue;
-        categoryScores = categoryScoresList;
-        tailorMatches = matchesList;
-        tailorGaps = gapAnalysis;
+        overallConfidence = analysisResult.overallConfidence;
+        categoryScores = analysisResult.categoryScores;
+        tailorMatches = analysisResult.matches;
+        tailorGaps = analysisResult.gaps;
       });
 
       if (mounted) {
@@ -427,71 +340,7 @@ class _TailorScreenState extends State<TailorScreen> {
     });
 
     try {
-      // Sample resume data - in production, this would be parsed from the PDF
-      final sampleResumeData = {
-        'contact': {
-          'name': 'John Doe',
-          'email': 'john@example.com',
-          'phone': '(555) 123-4567',
-          'location': 'Boston, MA',
-          'linkedin': 'linkedin.com/in/johndoe',
-        },
-        'education': [
-          {
-            'school': 'Massachusetts Institute of Technology',
-            'degree': 'BS Computer Science',
-            'location': 'Cambridge, MA',
-            'date': '2020',
-            'details': ['Graduated with honors', 'GPA: 3.8']
-          }
-        ],
-        'skills': [
-          {
-            'category': 'Programming Languages',
-            'items': ['Python', 'JavaScript', 'Java', 'C++']
-          },
-          {
-            'category': 'Tools & Frameworks',
-            'items': ['Flutter', 'React', 'Django', 'TensorFlow']
-          }
-        ],
-        'work_experience': [
-          {
-            'title': 'Software Engineer',
-            'company': 'Tech Corp',
-            'location': 'Boston, MA',
-            'start_date': '2020',
-            'end_date': '2023',
-            'bullets': [
-              'Led team of 5 engineers in building scalable microservices',
-              'Improved system performance by 40% through optimization',
-              'Mentored 3 junior developers in best practices'
-            ]
-          },
-          {
-            'title': 'Junior Developer',
-            'company': 'StartupXYZ',
-            'location': 'Remote',
-            'start_date': '2019',
-            'end_date': '2020',
-            'bullets': [
-              'Developed full-stack web application using React and Django',
-              'Implemented CI/CD pipeline reducing deployment time by 50%',
-              'Collaborated with design team on UI/UX improvements'
-            ]
-          }
-        ],
-        'projects': [
-          {
-            'name': 'Resume AI',
-            'details': ['AI-powered resume analyzer and generator', 'Built with Flutter and Python']
-          }
-        ]
-      };
-
-      // Call API to generate PDF
-      final pdfFilename = fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
-      final result = await _apiService.savePdf(pdfFilename, sampleResumeData);
+      final result = await _tailorController.saveSamplePdf(fileName);
 
       if (mounted) {
         setState(() {
@@ -559,7 +408,9 @@ class _TailorScreenState extends State<TailorScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           ElevatedButton(
@@ -614,8 +465,8 @@ class _TailorScreenState extends State<TailorScreen> {
           child: Container(
             color: AppColors.darkSecondary,
             child: isLoading
-              ? _buildLoadingState()
-              : resumeFiles.isEmpty
+                ? _buildLoadingState()
+                : resumeFiles.isEmpty
                 ? _buildNoResumesPanel()
                 : _buildLeftPanelContent(),
           ),
@@ -624,10 +475,7 @@ class _TailorScreenState extends State<TailorScreen> {
         // ====================================================================
         // VERTICAL DIVIDER: Between Panels
         // ====================================================================
-        Container(
-          width: 1,
-          color: AppColors.dark2,
-        ),
+        Container(width: 1, color: AppColors.dark2),
 
         // ====================================================================
         // RIGHT PANEL: Resume Preview (60%)
@@ -637,8 +485,8 @@ class _TailorScreenState extends State<TailorScreen> {
           child: Container(
             color: AppColors.darkPrimary,
             child: resumeFiles.isEmpty
-              ? _buildNoResumesPreviewPanel()
-              : _buildResumePreviewPanel(),
+                ? _buildNoResumesPreviewPanel()
+                : _buildResumePreviewPanel(),
           ),
         ),
       ],
@@ -649,11 +497,7 @@ class _TailorScreenState extends State<TailorScreen> {
   // BUILD HELPER: Loading State
   // --------------------------------------------------------------------------
   Widget _buildLoadingState() {
-    return Center(
-      child: CircularProgressIndicator(
-        color: AppColors.gold,
-      ),
-    );
+    return Center(child: CircularProgressIndicator(color: AppColors.gold));
   }
 
   // --------------------------------------------------------------------------
@@ -695,10 +539,7 @@ class _TailorScreenState extends State<TailorScreen> {
     return Container(
       margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.gold.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -708,7 +549,7 @@ class _TailorScreenState extends State<TailorScreen> {
           // HEADER
           // ==============================================================
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -733,17 +574,14 @@ class _TailorScreenState extends State<TailorScreen> {
           // ==============================================================
           // DIVIDER
           // ==============================================================
-          Container(
-            height: 1,
-            color: AppColors.gold.withOpacity(0.3),
-          ),
+          Container(height: 1, color: AppColors.gold.withOpacity(0.3)),
           // ==============================================================
           // CONTENT: Scrollable form
           // ==============================================================
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -798,7 +636,9 @@ class _TailorScreenState extends State<TailorScreen> {
                                   )
                                 : const Icon(Icons.edit_outlined),
                             label: Text(
-                              isTailoring ? 'Tailoring...' : 'Generate Tailored Resume',
+                              isTailoring
+                                  ? 'Tailoring...'
+                                  : 'Generate Tailored Resume',
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.gold,
@@ -853,7 +693,9 @@ class _TailorScreenState extends State<TailorScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.dark2,
                                 foregroundColor: AppColors.cream,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                               ),
                             ),
                           ),
@@ -870,23 +712,28 @@ class _TailorScreenState extends State<TailorScreen> {
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                          AppColors.darkPrimary
-                                              .withOpacity(0.7),
-                                        ),
+                                              AppColors.darkPrimary.withOpacity(
+                                                0.7,
+                                              ),
+                                            ),
                                       ),
                                     )
                                   : const Icon(Icons.download),
-                              label: Text(isGeneratingPdf
-                                  ? 'Generating...'
-                                  : 'Download Tailored Resume'),
+                              label: Text(
+                                isGeneratingPdf
+                                    ? 'Generating...'
+                                    : 'Download Tailored Resume',
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.successGreen,
                                 foregroundColor: AppColors.darkPrimary,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                disabledBackgroundColor:
-                                    AppColors.successGreen.withOpacity(0.5),
-                                disabledForegroundColor:
-                                    AppColors.darkPrimary.withOpacity(0.5),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                disabledBackgroundColor: AppColors.successGreen
+                                    .withOpacity(0.5),
+                                disabledForegroundColor: AppColors.darkPrimary
+                                    .withOpacity(0.5),
                               ),
                             ),
                           ),
@@ -904,236 +751,6 @@ class _TailorScreenState extends State<TailorScreen> {
   }
 
   // --------------------------------------------------------------------------
-  // BUILD HELPER: Resume List Section
-  // --------------------------------------------------------------------------
-  Widget _buildResumeListSection() {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.gold.withOpacity(0.3),
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // ======================================================
-          // HEADER: Title and Count
-          // ======================================================
-          Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Select Resume',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.labelText.copyWith(
-                    color: AppColors.cream,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${resumeFiles.length} Resume',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // ======================================================
-          // DIVIDER: Under Header
-          // ======================================================
-          Container(
-            height: 1,
-            color: AppColors.gold.withOpacity(0.3),
-          ),
-          // ======================================================
-          // CONTENT: Resume List
-          // ======================================================
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              itemCount: resumeFiles.length,
-              itemBuilder: (context, index) => _buildResumeListItem(index),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // BUILD HELPER: Single Resume List Item
-  // --------------------------------------------------------------------------
-  Widget _buildResumeListItem(int index) {
-    final file = resumeFiles[index];
-    final isSelected = selectedResumeIndex == index;
-    final fileName = ResumeFileService.getFileName(file.path);
-    final lastModified = ResumeFileService.getLastModified(file);
-    final fileSize = _getFileSizeText(file);
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedResumeIndex = index;
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.dark3 : AppColors.dark2,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppColors.gold : AppColors.dark3,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.picture_as_pdf,
-                  color: AppColors.errorRed,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    fileName,
-                    style: AppTypography.labelText.copyWith(
-                      color: AppColors.cream,
-                      fontSize: 12,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  lastModified,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
-                  ),
-                ),
-                Text(
-                  fileSize,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textTertiary,
-                    fontSize: 9,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // BUILD HELPER: Job Details Section
-  // --------------------------------------------------------------------------
-  Widget _buildJobDetailsSection() {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.gold.withOpacity(0.3),
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // ======================================================
-          // HEADER: Title and Description
-          // ======================================================
-          Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: _buildJobDetailsHeader(),
-          ),
-          // ======================================================
-          // DIVIDER: Under Header
-          // ======================================================
-          Container(
-            height: 1,
-            color: AppColors.gold.withOpacity(0.3),
-          ),
-          // ======================================================
-          // CONTENT: Input Fields, Button, and Results
-          // ======================================================
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildJobInputFields(),
-                    // ======================================================
-                    // BUTTON: Tailor Resume
-                    // ======================================================
-                    const SizedBox(height: 16),
-                    _buildTailorButton(),
-                    // ======================================================
-                    // RESULTS: If Tailored
-                    // ======================================================
-                    if (hasTailored) _buildTailorResults(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // BUILD HELPER: Job Details Header
-  // --------------------------------------------------------------------------
-  Widget _buildJobDetailsHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Job Details',
-          textAlign: TextAlign.center,
-          style: AppTypography.labelText.copyWith(
-            color: AppColors.cream,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Enter job information to tailor your resume',
-          textAlign: TextAlign.center,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --------------------------------------------------------------------------
   // BUILD HELPER: Job Input Fields
   // --------------------------------------------------------------------------
   Widget _buildJobInputFields() {
@@ -1143,9 +760,7 @@ class _TailorScreenState extends State<TailorScreen> {
         // Position Input
         TextField(
           controller: jobPositionController,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.cream,
-          ),
+          style: AppTypography.bodySmall.copyWith(color: AppColors.cream),
           decoration: InputDecoration(
             labelText: 'Job Position (Optional)',
             labelStyle: AppTypography.bodySmall.copyWith(
@@ -1163,10 +778,7 @@ class _TailorScreenState extends State<TailorScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(
-                color: AppColors.gold,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: AppColors.gold, width: 2),
             ),
             filled: true,
             fillColor: AppColors.dark3,
@@ -1180,9 +792,7 @@ class _TailorScreenState extends State<TailorScreen> {
         // Company Input
         TextField(
           controller: jobCompanyController,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.cream,
-          ),
+          style: AppTypography.bodySmall.copyWith(color: AppColors.cream),
           decoration: InputDecoration(
             labelText: 'Company (Optional)',
             labelStyle: AppTypography.bodySmall.copyWith(
@@ -1200,10 +810,7 @@ class _TailorScreenState extends State<TailorScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(
-                color: AppColors.gold,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: AppColors.gold, width: 2),
             ),
             filled: true,
             fillColor: AppColors.dark3,
@@ -1225,10 +832,7 @@ class _TailorScreenState extends State<TailorScreen> {
         const SizedBox(height: 8),
         // Job Description Input
         Container(
-          constraints: BoxConstraints(
-            minHeight: 120,
-            maxHeight: 150,
-          ),
+          constraints: BoxConstraints(minHeight: 120, maxHeight: 150),
           child: TextField(
             controller: jobDescriptionController,
             maxLines: null,
@@ -1250,52 +854,15 @@ class _TailorScreenState extends State<TailorScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                  color: AppColors.gold,
-                  width: 2,
-                ),
+                borderSide: BorderSide(color: AppColors.gold, width: 2),
               ),
               filled: true,
               fillColor: AppColors.dark3,
-              contentPadding: const EdgeInsets.all(12.0),
+              contentPadding: const EdgeInsets.all(12),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // BUILD HELPER: Tailor Button
-  // --------------------------------------------------------------------------
-  Widget _buildTailorButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: isTailoring ? null : _tailorResume,
-        icon: isTailoring
-          ? SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppColors.darkPrimary,
-                ),
-              ),
-            )
-          : const Icon(Icons.edit_outlined),
-        label: Text(
-          isTailoring ? 'Tailoring...' : 'Tailor Resume',
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.gold,
-          foregroundColor: AppColors.darkPrimary,
-          disabledBackgroundColor: AppColors.dark3,
-          disabledForegroundColor: AppColors.textSecondary,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-      ),
     );
   }
 
@@ -1314,56 +881,15 @@ class _TailorScreenState extends State<TailorScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.dark3),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: DropdownButton<int>(
-            value: selectedResumeIndex,
-            onChanged: (int? newValue) {
-              if (newValue != null) {
-                setState(() {
-                  selectedResumeIndex = newValue;
-                  _resetAnalysis();
-                });
-              }
-            },
-            isExpanded: true,
-            underline: const SizedBox(),
-            dropdownColor: AppColors.dark2,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.cream,
-            ),
-            items: resumeFiles.asMap().entries.map((entry) {
-              final index = entry.key;
-              final file = entry.value;
-              final fileName =
-                  ResumeFileService.getFileName(file.path);
-              return DropdownMenuItem<int>(
-                value: index,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.picture_as_pdf,
-                        color: AppColors.errorRed,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          fileName,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+        CustomResumeDropdown(
+          resumeFiles: resumeFiles,
+          selectedIndex: selectedResumeIndex,
+          onChanged: (newValue) {
+            setState(() {
+              selectedResumeIndex = newValue;
+              _resetAnalysis();
+            });
+          },
         ),
       ],
     );
@@ -1388,11 +914,7 @@ class _TailorScreenState extends State<TailorScreen> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: AppColors.gold,
-                    size: 18,
-                  ),
+                  Icon(Icons.info_outline, color: AppColors.gold, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1425,9 +947,7 @@ class _TailorScreenState extends State<TailorScreen> {
                     ),
                   )
                 : const Icon(Icons.analytics_outlined),
-            label: Text(
-              isTailoring ? 'Analyzing...' : 'See How I Fit',
-            ),
+            label: Text(isTailoring ? 'Analyzing...' : 'See How I Fit'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.darkPrimary,
@@ -1472,9 +992,9 @@ class _TailorScreenState extends State<TailorScreen> {
                     ),
                   )
                 : const Icon(Icons.download),
-            label: Text(isGeneratingPdf
-                ? 'Generating...'
-                : 'Submit This Resume'),
+            label: Text(
+              isGeneratingPdf ? 'Generating...' : 'Submit This Resume',
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.successGreen,
               foregroundColor: AppColors.darkPrimary,
@@ -1507,7 +1027,6 @@ class _TailorScreenState extends State<TailorScreen> {
     );
   }
 
-
   Widget _buildConfidenceGauge() {
     return Center(
       child: Column(
@@ -1524,9 +1043,11 @@ class _TailorScreenState extends State<TailorScreen> {
                   strokeWidth: 8,
                   backgroundColor: AppColors.dark3,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    overallConfidence >= 85 ? AppColors.successGreen :
-                    overallConfidence >= 70 ? AppColors.gold :
-                    AppColors.warningOrange
+                    overallConfidence >= 85
+                        ? AppColors.successGreen
+                        : overallConfidence >= 70
+                        ? AppColors.gold
+                        : AppColors.warningOrange,
                   ),
                 ),
               ),
@@ -1554,13 +1075,17 @@ class _TailorScreenState extends State<TailorScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            overallConfidence >= 85 ? 'Excellent fit!' :
-            overallConfidence >= 70 ? 'Good match' :
-            'Needs work',
+            overallConfidence >= 85
+                ? 'Excellent fit!'
+                : overallConfidence >= 70
+                ? 'Good match'
+                : 'Needs work',
             style: AppTypography.bodySmall.copyWith(
-              color: overallConfidence >= 85 ? AppColors.successGreen :
-              overallConfidence >= 70 ? AppColors.gold :
-              AppColors.warningOrange,
+              color: overallConfidence >= 85
+                  ? AppColors.successGreen
+                  : overallConfidence >= 70
+                  ? AppColors.gold
+                  : AppColors.warningOrange,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1626,9 +1151,11 @@ class _TailorScreenState extends State<TailorScreen> {
               minHeight: 6,
               backgroundColor: AppColors.dark3,
               valueColor: AlwaysStoppedAnimation<Color>(
-                score.score >= 85 ? AppColors.successGreen :
-                score.score >= 70 ? AppColors.gold :
-                AppColors.warningOrange
+                score.score >= 85
+                    ? AppColors.successGreen
+                    : score.score >= 70
+                    ? AppColors.gold
+                    : AppColors.warningOrange,
               ),
             ),
           ),
@@ -1655,17 +1182,11 @@ class _TailorScreenState extends State<TailorScreen> {
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(
-              child: _buildIntensityButton('light', 'Light'),
-            ),
+            Expanded(child: _buildIntensityButton('light', 'Light')),
             const SizedBox(width: 8),
-            Expanded(
-              child: _buildIntensityButton('medium', 'Medium'),
-            ),
+            Expanded(child: _buildIntensityButton('medium', 'Medium')),
             const SizedBox(width: 8),
-            Expanded(
-              child: _buildIntensityButton('heavy', 'Heavy'),
-            ),
+            Expanded(child: _buildIntensityButton('heavy', 'Heavy')),
           ],
         ),
       ],
@@ -1716,7 +1237,7 @@ class _TailorScreenState extends State<TailorScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Divider(height: 1, color: AppColors.dark2),
+        Divider(height: 1, color: AppColors.gold.withOpacity(0.3)),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -1756,7 +1277,10 @@ class _TailorScreenState extends State<TailorScreen> {
                 runSpacing: 6,
                 children: tailorGaps!.missingSkills.map((skill) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.warningOrange.withOpacity(0.1),
                       border: Border.all(
@@ -1825,149 +1349,6 @@ class _TailorScreenState extends State<TailorScreen> {
   }
 
   // --------------------------------------------------------------------------
-  // BUILD HELPER: Before/After Toggle
-  // --------------------------------------------------------------------------
-  Widget _buildBeforeAfterToggle() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Preview',
-              style: AppTypography.labelText.copyWith(
-                color: AppColors.cream,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.dark2,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.all(2),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        showBeforeTailorPreview = false;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: !showBeforeTailorPreview ? AppColors.dark3 : Colors.transparent,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Text(
-                        'After',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: !showBeforeTailorPreview ? AppColors.gold : AppColors.textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        showBeforeTailorPreview = true;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: showBeforeTailorPreview ? AppColors.dark3 : Colors.transparent,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Text(
-                        'Before',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: showBeforeTailorPreview ? AppColors.gold : AppColors.textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.dark3,
-            border: Border.all(color: AppColors.dark2),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (showBeforeTailorPreview)
-                Text(
-                  '[Original Resume - no modifications]',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                    fontStyle: FontStyle.italic,
-                    height: 1.5,
-                  ),
-                )
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.gold.withOpacity(0.1),
-                        border: Border.all(
-                          color: AppColors.gold.withOpacity(0.3),
-                        ),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Text(
-                        'TAILORED',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.gold,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      changesSummary,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.cream,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --------------------------------------------------------------------------
   // BUILD HELPER: Tailor Results
   // --------------------------------------------------------------------------
   Widget _buildTailorResults() {
@@ -1975,10 +1356,7 @@ class _TailorScreenState extends State<TailorScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        Divider(
-          height: 1,
-          color: AppColors.dark2,
-        ),
+        Divider(height: 1, color: AppColors.dark2),
         const SizedBox(height: 20),
         // ======================================================
         // CONFIDENCE GAUGE
@@ -2000,11 +1378,7 @@ class _TailorScreenState extends State<TailorScreen> {
         // ======================================================
         Row(
           children: [
-            Icon(
-              Icons.check_circle,
-              color: AppColors.successGreen,
-              size: 20,
-            ),
+            Icon(Icons.check_circle, color: AppColors.successGreen, size: 20),
             const SizedBox(width: 8),
             Text(
               'Top Matches',
@@ -2031,8 +1405,6 @@ class _TailorScreenState extends State<TailorScreen> {
         // ======================================================
         // BEFORE/AFTER TOGGLE
         // ======================================================
-        _buildBeforeAfterToggle(),
-        const SizedBox(height: 20),
         // ======================================================
         // BUTTONS
         // ======================================================
@@ -2095,8 +1467,8 @@ class _TailorScreenState extends State<TailorScreen> {
         color: AppColors.dark3,
         border: Border.all(
           color: isHighRelevance
-            ? AppColors.gold.withOpacity(0.3)
-            : AppColors.dark2,
+              ? AppColors.gold.withOpacity(0.3)
+              : AppColors.dark2,
         ),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -2135,18 +1507,15 @@ class _TailorScreenState extends State<TailorScreen> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isHighRelevance
-                    ? AppColors.successGreen.withOpacity(0.2)
-                    : AppColors.dark2,
+                      ? AppColors.successGreen.withOpacity(0.2)
+                      : AppColors.dark2,
                   border: Border.all(
                     color: isHighRelevance
-                      ? AppColors.successGreen
-                      : Colors.transparent,
+                        ? AppColors.successGreen
+                        : Colors.transparent,
                   ),
                   borderRadius: BorderRadius.circular(3),
                 ),
@@ -2154,8 +1523,8 @@ class _TailorScreenState extends State<TailorScreen> {
                   match.relevance,
                   style: AppTypography.bodySmall.copyWith(
                     color: isHighRelevance
-                      ? AppColors.successGreen
-                      : AppColors.textSecondary,
+                        ? AppColors.successGreen
+                        : AppColors.textSecondary,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -2200,10 +1569,7 @@ class _TailorScreenState extends State<TailorScreen> {
     return Container(
       margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: AppColors.gold.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -2245,6 +1611,72 @@ class _TailorScreenState extends State<TailorScreen> {
                     ],
                   ),
                 ),
+                if (hasTailored) ...[
+                  const SizedBox(width: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.dark2,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => showOriginalPdf = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: !showOriginalPdf
+                                  ? AppColors.dark3
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'Tailored',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: !showOriginalPdf
+                                    ? AppColors.gold
+                                    : AppColors.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => showOriginalPdf = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: showOriginalPdf
+                                  ? AppColors.dark3
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'Original',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: showOriginalPdf
+                                    ? AppColors.gold
+                                    : AppColors.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
                 _buildDownloadButton(),
               ],
             ),
@@ -2265,7 +1697,10 @@ class _TailorScreenState extends State<TailorScreen> {
                 child: Stack(
                   children: [
                     SfPdfViewer.file(
-                      resumeFiles[selectedResumeIndex],
+                      hasTailored && !showOriginalPdf
+                          ? (tailoredPdfFile ??
+                                resumeFiles[selectedResumeIndex])
+                          : resumeFiles[selectedResumeIndex],
                       pageLayoutMode: PdfPageLayoutMode.continuous,
                     ),
                     if (isTailoring) _buildTailoringOverlay(),
@@ -2289,9 +1724,7 @@ class _TailorScreenState extends State<TailorScreen> {
       tooltip: hasTailored
           ? 'Download tailored resume'
           : 'Tailor resume to download',
-      onPressed: hasTailored
-          ? () => _downloadTailoredResume()
-          : null,
+      onPressed: hasTailored ? () => _downloadTailoredResume() : null,
     );
   }
 
@@ -2320,10 +1753,7 @@ class _TailorScreenState extends State<TailorScreen> {
         builder: (context) => DownloadDialog(
           originalFileName: originalFileName,
           onDownload: (fileName, replaceOriginal) async {
-            await _performDownloadTailored(
-              fileName,
-              replaceOriginal,
-            );
+            await _performDownloadTailored(fileName, replaceOriginal);
           },
         ),
       );
@@ -2343,13 +1773,17 @@ class _TailorScreenState extends State<TailorScreen> {
       });
 
       // Ensure filename ends with .pdf
-      final pdfFilename =
-          fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
+      final pdfFilename = fileName.endsWith('.pdf')
+          ? fileName
+          : '$fileName.pdf';
 
       print('💾 Saving tailored resume as: $pdfFilename');
 
       // Call API to save as text PDF
-      final result = await _apiService.saveTextPdf(pdfFilename, tailoredResumeText);
+      final result = await _tailorController.saveTailoredTextPdf(
+        filename: pdfFilename,
+        tailoredResumeText: tailoredResumeText,
+      );
 
       if (mounted) {
         setState(() {
@@ -2369,8 +1803,7 @@ class _TailorScreenState extends State<TailorScreen> {
             ),
           );
         } else {
-          throw Exception(
-              result['error'] ?? 'Failed to save tailored resume');
+          throw Exception(result['error'] ?? 'Failed to save tailored resume');
         }
       }
     } catch (e) {
@@ -2405,9 +1838,7 @@ class _TailorScreenState extends State<TailorScreen> {
             const SizedBox(height: 16),
             Text(
               'Tailoring resume...',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.cream,
-              ),
+              style: AppTypography.bodySmall.copyWith(color: AppColors.cream),
             ),
           ],
         ),

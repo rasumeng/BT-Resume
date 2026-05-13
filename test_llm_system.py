@@ -125,7 +125,7 @@ test_cases = [
 all_passed = True
 for test in test_cases:
     try:
-        result = _extract_json_from_response(test["input"])
+        result = extract_json_from_response(test["input"])
         if isinstance(result, test["expected_type"]) and result is not None:
             print(f"  ✓ {test['name']}")
         else:
@@ -186,7 +186,7 @@ print("[TEST 8] Verifying LLM Service methods...")
 methods = [
     'polish_bullets',
     'polish_resume',
-    'tailor_resume',
+    'call_ollama',
     'grade_resume',
     'parse_to_pdf_format',
     'get_changes_summary'
@@ -208,8 +208,8 @@ import inspect
 polish_bullets_source = inspect.getsource(LLMService.polish_bullets)
 error_checks = [
     ("try/except blocks", "try:" in polish_bullets_source),
-    ("JSON parsing", "_extract_json_from_response" in polish_bullets_source),
-    ("Success validation", 'result.get("success")' in polish_bullets_source),
+    ("JSON parsing", "extract_bullet_list" in polish_bullets_source),
+    ("LLM call wrapper", 'call_ollama' in polish_bullets_source),
     ("Error logging", "logger.error" in polish_bullets_source),
 ]
 

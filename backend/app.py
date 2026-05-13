@@ -1,5 +1,5 @@
 """
-Flask Backend for Resume AI - Local AI Service Layer
+Flask Backend for BT-Resume - Local AI Service Layer
 Manages all resume processing and API endpoints.
 """
 

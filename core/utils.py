@@ -4,6 +4,8 @@ Common utilities and helpers to reduce redundancy across core modules.
 
 import json
 import re
+from dataclasses import dataclass
+from typing import List, Optional, Dict, Any
 
 
 # Error messages
@@ -68,3 +70,44 @@ def extract_urls(text: str) -> dict:
         urls["github"] = url
     
     return urls
+
+
+@dataclass
+class BulletPoint:
+    """A single resume bullet point"""
+    text: str
+    has_location: bool = False
+    has_date: bool = False
+
+
+def create_bullet_points(bullets_data: List[Dict[str, Any]]) -> List[BulletPoint]:
+    """
+    Convert bullet data to BulletPoint objects.
+    
+    Args:
+        bullets_data: List of dicts with bullet information
+        
+    Returns:
+        List of BulletPoint objects
+    """
+    result = []
+    
+    if not isinstance(bullets_data, list):
+        return result
+    
+    for bullet in bullets_data:
+        if isinstance(bullet, dict):
+            text = bullet.get("text", "").strip()
+            if text:
+                result.append(BulletPoint(
+                    text=text,
+                    has_location=bullet.get("has_location", False),
+                    has_date=bullet.get("has_date", False)
+                ))
+        elif isinstance(bullet, str):
+            # Simple string bullet
+            text = bullet.strip()
+            if text:
+                result.append(BulletPoint(text=text))
+    
+    return result

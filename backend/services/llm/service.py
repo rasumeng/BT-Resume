@@ -205,20 +205,30 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
         try:
             ollama = _get_ollama_service()
             
-            prompt = f"""You are an expert recruiter and resume coach. Grade this resume on a scale of 0-100.
-Provide:
-1. Overall score (0-100)
-2. Top 3 strengths (as a list)
-3. Top 3 areas for improvement (as a list)
-4. Actionable recommendations (as a list)
+            prompt = f"""You are an expert recruiter and resume coach. Grade this resume and return ONLY valid JSON with these exact keys:
+- score: Overall score (0-100)
+- atsScore: ATS compatibility score (0-10)
+- sectionsScore: Resume sections and structure score (0-10)
+- bulletsScore: Bullet point quality score (0-10)
+- contentScore: Content quality and clarity score (0-10)
+- keywordsScore: Keyword optimization score (0-10)
+- atsFeedback: Brief 1-sentence feedback on ATS compatibility
+- strengths: Top 3 strengths (list)
+- improvements: Top 3 areas for improvement (list)
+- recommendations: Actionable recommendations (list)
 
 RESUME:
 {resume_text}
 
-Return ONLY valid JSON with these exact keys: score, strengths, improvements, recommendations
 Example format:
 {{
   "score": 78,
+  "atsScore": 7,
+  "sectionsScore": 8,
+  "bulletsScore": 6,
+  "contentScore": 8,
+  "keywordsScore": 7,
+  "atsFeedback": "Good ATS compatibility with standard section headers",
   "strengths": ["bullet1", "bullet2", "bullet3"],
   "improvements": ["bullet1", "bullet2", "bullet3"],
   "recommendations": ["item1", "item2", "item3"]
@@ -351,7 +361,7 @@ Example format:
             
             if parsed and validate_parsed_resume(parsed):
                 logger.info("✅ Successfully parsed resume structure from Ollama")
-                return {"success": True, "parsed_data": parsed}
+                return {"success": True, "parsed_resume": parsed}
             else:
                 logger.error("✗ Parsed data did not match expected resume structure")
                 return {"success": False, "error": "Invalid resume structure returned by LLM"}

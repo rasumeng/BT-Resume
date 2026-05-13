@@ -252,8 +252,23 @@ Enhanced Resume:
 
 Return ONLY the JSON array (no other text):""".strip()
 
-def job_tailor_prompt(resume_section: str, job_description: str) -> str:
-    return f"""You are a professional resume editor. Rewrite the following resume bullets to better align with the job description.
+def job_tailor_prompt(resume_section: str, job_description: str, intensity: str = "medium") -> str:
+  intensity_instructions = {
+    "light": (
+      "Make minimal changes. Only reframe bullets to naturally incorporate relevant keywords. "
+      "Keep 90% of original wording."
+    ),
+    "medium": (
+      "Reorder and reframe content to highlight relevant skills and experience. "
+      "Keep 80% of original content. Naturally incorporate job description keywords."
+    ),
+    "heavy": (
+      "Extensively reframe all content to maximize relevance. Can rewrite bullets completely "
+      "to emphasize transferable skills. Keep core facts but shift framing."
+    ),
+  }
+
+  base_prompt = f"""You are a professional resume editor. Rewrite the following resume bullets to better align with the job description.
 
 RESUME BULLETS:
 {resume_section}
@@ -275,6 +290,8 @@ RULES:
 8. Return only the rewritten bullets, one per line. No explanation or commentary.
 
 REWRITTEN BULLETS:"""
+
+  return base_prompt + f"\n\nTAILORING INTENSITY: {intensity_instructions.get(intensity, intensity_instructions['medium'])}"
 
 def experience_updater_prompt(user_input: str) -> str:
     return f"""You are a professional resume writer. Convert the following experience description into 2-4 resume bullet points.

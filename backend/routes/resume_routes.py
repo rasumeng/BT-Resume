@@ -130,10 +130,22 @@ def save_text_pdf():
 @resume_bp.route('/delete-resume', methods=['DELETE'])
 def delete_resume():
     """Delete a resume file."""
+    from pathlib import Path
+    from services.cache_service import CacheService
+    
     filename = request.args.get('filename')
     
     if not filename:
         return jsonify({"success": False, "error": "filename required"}), 400
+    
+    # Invalidate the cached parsed data
+    try:
+        from config import get_resumes_dir
+        resumes_dir = get_resumes_dir()
+        resume_path = Path(resumes_dir) / filename
+        CacheService.invalidate_cache(resume_path)
+    except Exception as cache_err:
+        logger.warning(f"⚠️  Failed to invalidate cache: {cache_err}")
     
     result = FileService.delete_resume(filename)
     status_code = 200 if result.get('success') else 500
@@ -398,6 +410,9 @@ def grade_resume():
     }
     """
     import sys
+    from pathlib import Path
+    from services.cache_service import CacheService
+    
     print("=== grade_resume route called ===", file=sys.stderr, flush=True)
     sys.stderr.flush()
     logger.warning("⚠️  grade_resume route called")
@@ -408,11 +423,32 @@ def grade_resume():
         
         # Get resume text either directly or from file
         if not resume_text and filename:
-            # Extract from file
-            result = FileService.extract_resume_text(filename)
-            if not result.get('success'):
-                return jsonify(result), 400
-            resume_text = result.get('content')
+            # First check if we have cached parsed data
+            from config import get_resumes_dir
+            resumes_dir = get_resumes_dir()
+            resume_path = Path(resumes_dir) / filename
+            
+            cached_parsed = CacheService.load_cached_resume(resume_path)
+            if cached_parsed:
+                # Reconstruct text from cached parsed data
+                logger.info(f"📦 Using cached parsed data for grading: {filename}")
+                resume_text = CacheService.extract_resume_text_from_cache(cached_parsed)
+            
+            # If no cache or cache load failed, extract from file
+            if not resume_text:
+                result = FileService.extract_resume_text(filename)
+                if not result.get('success'):
+                    return jsonify(result), 400
+                resume_text = result.get('content')
+                
+                # Try to parse and cache for future use
+                try:
+                    parse_result = LLMService.parse_to_pdf_format(resume_text)
+                    if parse_result.get('success'):
+                        CacheService.save_parsed_resume(resume_path, parse_result.get('parsed_resume', {}))
+                        logger.info(f"✅ Created cache during grading: {filename}")
+                except Exception as parse_err:
+                    logger.warning(f"⚠️  Failed to create cache during grading: {parse_err}")
         
         if not resume_text:
             return jsonify({

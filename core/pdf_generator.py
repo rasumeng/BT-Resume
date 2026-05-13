@@ -392,11 +392,13 @@ if __name__ == "__main__":
     
     # Handle imports when running as __main__
     try:
-        from .resume_model import ResumData, ContactInfo, WorkExperience, Project, Education, Leadership, Skill, BulletPoint
+        from .resume_model import ResumData, ContactInfo, WorkExperience, Project, Education, Leadership, Skill
+        from .utils import BulletPoint
     except ImportError:
         # Fallback for when running as script
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from core.resume_model import ResumData, ContactInfo, WorkExperience, Project, Education, Leadership, Skill, BulletPoint
+        from core.resume_model import ResumData, ContactInfo, WorkExperience, Project, Education, Leadership, Skill
+        from core.utils import BulletPoint
     
     # Create sample resume data for testing/fine-tuning
     sample_resume = ResumData(

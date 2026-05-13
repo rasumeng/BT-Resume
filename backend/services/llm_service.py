@@ -266,29 +266,67 @@ DO NOT include any markdown, code blocks, or explanations. Just the JSON array."
             resume_text: Resume content to grade
             
         Returns:
-            Dict with score and feedback
+            Dict with score breakdown and feedback
         """
         try:
             ollama = _get_ollama_service()
             
-            prompt = f"""You are an expert recruiter and resume coach. Grade this resume on a scale of 0-100.
-Provide:
-1. Overall score (0-100)
-2. Top 3 strengths (as a list)
-3. Top 3 areas for improvement (as a list)
-4. Actionable recommendations (as a list)
+            prompt = f"""You are an expert Resume Screener and ATS (Applicant Tracking System) Analyst. Evaluate the following resume rigorously against industry-standard ATS criteria.
 
 RESUME:
 {resume_text}
 
-Return ONLY valid JSON with these exact keys: score, strengths, improvements, recommendations
-Example format:
+Evaluate the resume across these 5 weighted dimensions:
+
+1. ATS COMPATIBILITY (30% weight) - Score 1-10:
+   - Keyword density and relevance to target role
+   - Standard section headings (avoid non-standard labels)
+   - Clean formatting (no tables, headers/footers, images)
+   - File format compatibility (plain text friendly)
+   - No special characters or encoding issues
+
+2. STRUCTURE & SECTIONS (20% weight) - Score 1-10:
+   - Logical section order (Contact → Summary → Experience → Education → Skills)
+   - Presence of essential sections
+   - Consistent formatting throughout
+   - Appropriate length (1-2 pages for experienced, 1 page for entry-level)
+
+3. BULLET QUALITY (25% weight) - Score 1-10:
+   - Action verbs at start of each bullet
+   - Measurable results and quantifiable achievements
+   - Specific role/company/skill mentions
+   - Conciseness (one line per bullet)
+   - STAR method format (Situation/Task, Action, Result)
+
+4. CONTENT STRENGTH (15% weight) - Score 1-10:
+   - Professional summary quality
+   - Relevant experience details
+   - Education section completeness
+   - No spelling/grammar errors
+   - Consistent tense and voice
+
+5. KEYWORD OPTIMIZATION (10% weight) - Score 1-10:
+   - Technical skills presence
+   - Industry-specific terminology
+   - Missing critical keywords for typical roles
+   - Soft skills balance
+
+Calculate overall score as weighted average × 10 (scale 0-100).
+
+Return ONLY valid JSON with these exact keys:
 {{
-  "score": 78,
-  "strengths": ["bullet1", "bullet2", "bullet3"],
-  "improvements": ["bullet1", "bullet2", "bullet3"],
-  "recommendations": ["item1", "item2", "item3"]
-}}"""
+  "score": 0-100,
+  "ats_score": 1-10,
+  "sections_score": 1-10,
+  "bullets_score": 1-10,
+  "content_score": 1-10,
+  "keywords_score": 1-10,
+  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+  "improvements": ["specific improvement 1", "specific improvement 2", "specific improvement 3"],
+  "ats_feedback": "1-2 sentence assessment of ATS compatibility"
+}}
+
+Ensure strengths/improvements are specific, actionable, and tied to the actual resume content - not generic advice."""
             
             logger.info("📊 Grading resume using Ollama...")
             result = ollama.generate(prompt, stream=False)
@@ -328,11 +366,21 @@ Example format:
                     else:
                         raise json.JSONDecodeError("No JSON object found in response", response, 0)
                 
-                # Validate required fields
-                required_fields = ['score', 'strengths', 'improvements', 'recommendations']
-                for field in required_fields:
+                # Validate required fields with defaults
+                required_fields = {
+                    'score': 0,
+                    'ats_score': 0,
+                    'sections_score': 0,
+                    'bullets_score': 0,
+                    'content_score': 0,
+                    'keywords_score': 0,
+                    'strengths': [],
+                    'improvements': [],
+                    'ats_feedback': ''
+                }
+                for field, default_value in required_fields.items():
                     if field not in grade_data:
-                        grade_data[field] = grade_data.get(field, 0 if field == 'score' else [])
+                        grade_data[field] = default_value
                 
                 logger.info(f"✓ Resume graded: {grade_data.get('score', 0)}/100")
                 return {"success": True, "grade": grade_data}

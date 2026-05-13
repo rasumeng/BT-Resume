@@ -64,15 +64,9 @@ class PolishRequest {
   final List<String> bullets;
   final String intensity; // 'light', 'medium', 'heavy'
 
-  PolishRequest({
-    required this.bullets,
-    this.intensity = 'medium',
-  });
+  PolishRequest({required this.bullets, this.intensity = 'medium'});
 
-  Map<String, dynamic> toJson() => {
-    'bullets': bullets,
-    'intensity': intensity,
-  };
+  Map<String, dynamic> toJson() => {'bullets': bullets, 'intensity': intensity};
 }
 
 /// Polish response
@@ -82,11 +76,7 @@ class PolishResponse {
   final List<String> bullets;
   final String? error;
 
-  PolishResponse({
-    required this.success,
-    required this.bullets,
-    this.error,
-  });
+  PolishResponse({required this.success, required this.bullets, this.error});
 
   factory PolishResponse.fromJson(Map<String, dynamic> json) =>
       _$PolishResponseFromJson(json);
@@ -97,15 +87,25 @@ class PolishResponse {
 @JsonSerializable()
 class GradeData {
   final int score;
-  final List<String> strengths;
-  final List<String> improvements;
-  final List<String> recommendations;
+  final int? atsScore;
+  final int? sectionsScore;
+  final int? bulletsScore;
+  final int? contentScore;
+  final int? keywordsScore;
+  final List<String>? strengths;
+  final List<String>? improvements;
+  final String? atsFeedback;
 
   GradeData({
     required this.score,
-    required this.strengths,
-    required this.improvements,
-    required this.recommendations,
+    this.atsScore,
+    this.sectionsScore,
+    this.bulletsScore,
+    this.contentScore,
+    this.keywordsScore,
+    this.strengths,
+    this.improvements,
+    this.atsFeedback,
   });
 
   factory GradeData.fromJson(Map<String, dynamic> json) =>
@@ -120,11 +120,7 @@ class GradeResponse {
   final GradeData? grade;
   final String? error;
 
-  GradeResponse({
-    required this.success,
-    this.grade,
-    this.error,
-  });
+  GradeResponse({required this.success, this.grade, this.error});
 
   factory GradeResponse.fromJson(Map<String, dynamic> json) =>
       _$GradeResponseFromJson(json);

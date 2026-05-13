@@ -9,7 +9,7 @@ import json
 from typing import Dict, Any
 
 API_BASE = "http://localhost:5000/api"
-TIMEOUT = 30
+TIMEOUT = 120
 
 def print_section(title: str):
     """Print a formatted section header."""

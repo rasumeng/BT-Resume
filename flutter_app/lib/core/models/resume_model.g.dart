@@ -41,22 +41,30 @@ Map<String, dynamic> _$PolishResponseToJson(PolishResponse instance) =>
 
 GradeData _$GradeDataFromJson(Map<String, dynamic> json) => GradeData(
   score: (json['score'] as num).toInt(),
-  strengths: (json['strengths'] as List<dynamic>)
-      .map((e) => e as String)
+  atsScore: (json['atsScore'] as num?)?.toInt(),
+  sectionsScore: (json['sectionsScore'] as num?)?.toInt(),
+  bulletsScore: (json['bulletsScore'] as num?)?.toInt(),
+  contentScore: (json['contentScore'] as num?)?.toInt(),
+  keywordsScore: (json['keywordsScore'] as num?)?.toInt(),
+  strengths: (json['strengths'] as List<dynamic>?)
+      ?.map((e) => e as String)
       .toList(),
-  improvements: (json['improvements'] as List<dynamic>)
-      .map((e) => e as String)
+  improvements: (json['improvements'] as List<dynamic>?)
+      ?.map((e) => e as String)
       .toList(),
-  recommendations: (json['recommendations'] as List<dynamic>)
-      .map((e) => e as String)
-      .toList(),
+  atsFeedback: json['atsFeedback'] as String?,
 );
 
 Map<String, dynamic> _$GradeDataToJson(GradeData instance) => <String, dynamic>{
   'score': instance.score,
+  'atsScore': instance.atsScore,
+  'sectionsScore': instance.sectionsScore,
+  'bulletsScore': instance.bulletsScore,
+  'contentScore': instance.contentScore,
+  'keywordsScore': instance.keywordsScore,
   'strengths': instance.strengths,
   'improvements': instance.improvements,
-  'recommendations': instance.recommendations,
+  'atsFeedback': instance.atsFeedback,
 };
 
 GradeResponse _$GradeResponseFromJson(Map<String, dynamic> json) =>

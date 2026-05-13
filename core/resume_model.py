@@ -7,7 +7,7 @@ This ensures consistent data storage across parsing and generation.
 
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict, field
-from .utils import create_bullet_points
+from .utils import create_bullet_points, BulletPoint
 
 
 @dataclass
@@ -63,14 +63,6 @@ class ContactInfo:
             parts.append(url)
         
         return " | ".join(parts)
-
-
-@dataclass
-class BulletPoint:
-    """A single resume bullet point"""
-    text: str
-    has_location: bool = False
-    has_date: bool = False
 
 
 @dataclass
