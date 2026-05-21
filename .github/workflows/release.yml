@@ -21,6 +21,10 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Flutter Doctor
+        working-directory: ./flutter_app
+        run: flutter doctor -v
+
       - name: Install NSIS
         run: choco install nsis -y
 
@@ -31,26 +35,10 @@ jobs:
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build Flutter App (with log capture)
-        shell: powershell
-        run: |
-          cd flutter_app
-          $output = flutter build windows --release *>&1
-          $exitCode = $LASTEXITCODE
-          $output | Out-File -FilePath $env:RUNNER_TEMP\build_log.txt -Encoding utf8
-          if ($exitCode -ne 0) {
-            Write-Host "Build failed. Full output:"
-            $output
-            exit $exitCode
-          }
-
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-build-log
-          path: ${{ runner.temp }}\build_log.txt
-          retention-days: 7
+      - name: Build Flutter App
+        working-directory: ./flutter_app
+        shell: cmd
+        run: flutter build windows --release
 
       - name: Update NSIS Version
         working-directory: ./installer/windows
