@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_desktop_updater/flutter_desktop_updater.dart';
+import 'package:http/http.dart' as http;
 import 'config/colors.dart';
 import 'config/typography.dart';
 import 'features/splash/presentation/splash_screen.dart';
@@ -9,16 +11,10 @@ import 'features/resumes/presentation/screens/my_resumes_screen.dart';
 import 'features/polish/presentation/screens/polish_screen.dart';
 import 'features/tailor/presentation/screens/tailor_screen.dart';
 import 'features/feedback/presentation/screens/feedback_screen.dart';
-import 'shared/mixins/has_clear_inputs.dart';
 import 'core/services/app_initialization_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Configure updater
-  UpdateConfig().configure(
-    updateJsonUrl: 'https://rasumeng.github.io/BT-Resume/releases/app-archive.json',
-  );
 
   // Set minimum window size
   await windowManager.ensureInitialized();
@@ -126,6 +122,7 @@ class SplashWrapper extends StatefulWidget {
 
 class _SplashWrapperState extends State<SplashWrapper> {
   bool _isReady = false;
+  final UpdateManager _updateManager = UpdateManager();
 
   @override
   void initState() {
@@ -134,7 +131,35 @@ class _SplashWrapperState extends State<SplashWrapper> {
   }
 
   Future<void> _checkForUpdates() async {
-    await UpdateManager().checkForUpdate();
+    const manifestUrl =
+        'https://rasumeng.github.io/BT-Resume/releases/app-archive.json';
+    try {
+      final response = await http.get(Uri.parse(manifestUrl));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final items = data['items'] as List<dynamic>;
+        if (items.isNotEmpty) {
+          final latest = items[0] as Map<String, dynamic>;
+          final info = UpdateInfo(
+            version: Version(
+              minimum: '1.0.0',
+              latest: latest['version'] as String,
+            ),
+            buildNumber: (latest['shortVersion'] as int).toString(),
+            downloadUrl:
+                '${latest['url']}BTFResume-${latest['version']}-Setup.exe',
+            fileSize: 0,
+            releaseNotes: (latest['changes'] as List<dynamic>)
+                .map((c) => '${c['type']}: ${c['message']}')
+                .join('\n'),
+            updateRequired: latest['mandatory'] as bool? ?? false,
+          );
+          await _updateManager.setUpdateInfo(info);
+        }
+      }
+    } catch (_) {
+      // Silent fail - updater is non-critical
+    }
   }
 
   @override
@@ -282,17 +307,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          // My Resumes Tab
-          MyResumesScreen(key: _myResumesKey),
-          // Polish Tab
-          PolishScreen(key: _polishKey),
-          // Tailor Tab
-          TailorScreen(key: _tailorKey),
-          // Experience Tab
-          FeedbackScreen(key: _feedbackKey),
+          const UpdateBanner(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                MyResumesScreen(key: _myResumesKey),
+                PolishScreen(key: _polishKey),
+                TailorScreen(key: _tailorKey),
+                FeedbackScreen(key: _feedbackKey),
+              ],
+            ),
+          ),
         ],
       ),
     );

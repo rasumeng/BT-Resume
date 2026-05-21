@@ -50,7 +50,8 @@ jobs:
       - name: Rename Installer
         shell: powershell
         run: |
-          Move-Item installer/windows/BT-Resume-Setup.exe releases/BTFResume-${{ env.GITHUB_REF_NAME }}-Setup.exe
+          $ver = $env:GITHUB_REF_NAME -replace 'v',''
+          Move-Item installer/windows/BT-Resume-Setup.exe "releases/BTFResume-$ver-Setup.exe"
 
       - name: Generate Update Manifest
         shell: powershell
@@ -65,7 +66,7 @@ jobs:
             "items": [
               {
                 "version": "$version",
-                "shortVersion": 0,
+                "shortVersion": [int]$version.Split('.')[1],
                 "changes": [
                   {
                     "type": "feat",
