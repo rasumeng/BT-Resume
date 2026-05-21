@@ -24,14 +24,13 @@ jobs:
       - name: Install NSIS
         run: choco install nsis -y
 
+      - name: Flutter Pub Get
+        working-directory: ./flutter_app
+        run: flutter pub get
+
       - name: Build Flutter App
-        shell: powershell
-        run: |
-          cd flutter_app
-          flutter pub get 2>&1
-          if ($LASTEXITCODE -ne 0) { throw "flutter pub get failed with exit code $LASTEXITCODE" }
-          flutter build windows --release 2>&1
-          if ($LASTEXITCODE -ne 0) { throw "flutter build failed with exit code $LASTEXITCODE" }
+        working-directory: ./flutter_app
+        run: flutter build windows --release
 
       - name: Update NSIS Version
         working-directory: ./installer/windows
