@@ -35,29 +35,24 @@ jobs:
           pip install pyinstaller
 
       - name: Build executable via PyInstaller
-        shell: python
+        shell: bash
         run: |
-          import sys, platform, subprocess
-          sep = ";" if platform.system() == "Windows" else ":"
-          cmd = [
-            sys.executable, "-m", "PyInstaller",
-            "--onefile", "--name", "btr",
-            f"--add-data=web/dist{sep}web/dist",
-          ]
-          for mod in [
-            "backend.app", "backend.config",
-            "backend.services.ollama_service",
-            "backend.services.file_service",
-            "backend.services.template_service",
-            "backend.services.ai_service",
-            "backend.services.pdf_service",
-            "backend.routes.resume_routes",
-            "backend.routes.track_routes",
-            "core.resume_analyzer",
-          ]:
-            cmd.append(f"--hidden-import={mod}")
-          cmd.append("btr/cli.py")
-          subprocess.check_call(cmd)
+          set -e
+          SEP=":"
+          [ "$RUNNER_OS" = "Windows" ] && SEP=";"
+          python -m PyInstaller --onefile --name btr \
+            --add-data "web/dist${SEP}web/dist" \
+            --hidden-import backend.app \
+            --hidden-import backend.config \
+            --hidden-import backend.services.ollama_service \
+            --hidden-import backend.services.file_service \
+            --hidden-import backend.services.template_service \
+            --hidden-import backend.services.ai_service \
+            --hidden-import backend.services.pdf_service \
+            --hidden-import backend.routes.resume_routes \
+            --hidden-import backend.routes.track_routes \
+            --hidden-import core.resume_analyzer \
+            btr/cli.py
 
       - name: Rename binary for release
         shell: bash
