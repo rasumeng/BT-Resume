@@ -57,6 +57,8 @@ print(f'web package: {web.__file__}')
           set -e
           SEP=":"
           if [ "$RUNNER_OS" = "Windows" ]; then SEP=";"; fi
+          ls -la web/dist/
+          ls -la btr/cli.py
           python -m PyInstaller --onefile --name btr \
             --add-data "web/dist${SEP}web/dist" \
             --hidden-import backend.app \
