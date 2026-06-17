@@ -3,10 +3,11 @@ Resume Routes - HTTP endpoints for resume operations.
 Clean separation: routes handle HTTP, services handle business logic.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from datetime import datetime
 import logging
 import json
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,49 @@ def get_resume():
     if not filename:
         return jsonify({"success": False, "error": "filename required"}), 400
     
-    result = FileService.get_resume(filename)
+    result = FileService.extract_resume_text(filename)
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
+
+@resume_bp.route('/get-resume-pdf', methods=['GET'])
+def get_resume_pdf():
+    """Stream a resume PDF for browser preview."""
+    from config import get_resumes_dir, get_temp_dir
+
+    filename = request.args.get('filename')
+    if not filename:
+        return jsonify({"success": False, "error": "filename required"}), 400
+
+    if not filename.lower().endswith('.pdf'):
+        return jsonify({"success": False, "error": "only PDF previews are supported"}), 400
+
+    source = request.args.get('source', 'resumes')
+
+    try:
+        if source == 'temp':
+            resume_path = get_temp_dir() / filename
+        else:
+            resume_path = get_resumes_dir() / filename
+
+        if not resume_path.exists():
+            return jsonify({"success": False, "error": f"Resume not found: {filename}"}), 404
+
+        is_download = request.args.get('download', '').lower() in ('1', 'true', 'yes')
+
+        response = send_file(
+            str(resume_path),
+            mimetype='application/pdf',
+            as_attachment=is_download,
+            download_name=filename if is_download else None,
+            conditional=not is_download,
+        )
+        response.headers['Content-Disposition'] = (
+            f'attachment; filename="{filename}"' if is_download else 'inline'
+        )
+        return response
+    except Exception as e:
+        logger.error(f"get_resume_pdf route handler exception: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @resume_bp.route('/update-resume', methods=['POST'])
 def update_resume():
@@ -53,6 +94,66 @@ def update_resume():
     result = FileService.update_resume(filename, content)
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
+
+@resume_bp.route('/upload-resume', methods=['POST'])
+def upload_resume():
+    """Upload a PDF resume, store it, and cache parsed text when possible."""
+    from pathlib import Path
+    from services.cache_service import CacheService
+    from config import get_resumes_dir
+
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "file field required"}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "no file selected"}), 400
+
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({"success": False, "error": "only PDF files allowed"}), 400
+
+        save_result = FileService.save_uploaded_resume(file, file.filename)
+        if not save_result.get('success'):
+            return jsonify(save_result), 400
+
+        stored_filename = save_result['filename']
+        resume_path = Path(get_resumes_dir()) / stored_filename
+
+        def process_uploaded_resume():
+            try:
+                extracted = FileService.extract_resume_text(stored_filename)
+                if not extracted.get('success'):
+                    logger.warning(f"⚠️  Uploaded resume saved but extraction failed: {extracted.get('error')}")
+                    return
+
+                extracted_text = extracted.get('content', '')
+                if not extracted_text:
+                    logger.warning(f"⚠️  Uploaded resume saved but extraction returned no text: {stored_filename}")
+                    return
+
+                parse_result = LLMService.parse_to_pdf_format(extracted_text)
+                if parse_result.get('success'):
+                    CacheService.save_parsed_resume(resume_path, parse_result.get('parsed_resume', {}))
+                    logger.info(f"✓ Cached parsed resume after upload: {stored_filename}")
+                else:
+                    logger.warning(f"⚠️  Failed to parse uploaded resume: {parse_result.get('error')}")
+            except Exception as parse_err:
+                logger.warning(f"⚠️  Failed to parse/cache uploaded resume: {parse_err}")
+
+        threading.Thread(target=process_uploaded_resume, daemon=True).start()
+
+        return jsonify({
+            "success": True,
+            "filename": stored_filename,
+            "path": save_result.get('path'),
+            "extracted_text": '',
+            "parsed_cached": False,
+            "processing": True,
+        }), 200
+    except Exception as e:
+        logger.error(f"upload_resume route handler exception: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @resume_bp.route('/save-resume-pdf', methods=['POST'])
 def save_resume_pdf():
@@ -106,6 +207,7 @@ def save_text_pdf():
         data = request.get_json()
         filename = data.get('filename')
         text_content = data.get('text_content')
+        use_temp = data.get('use_temp', False)
         
         if not filename or not text_content:
             return jsonify({"success": False, "error": "filename and text_content required"}), 400
@@ -114,7 +216,7 @@ def save_text_pdf():
         if not filename.endswith('.pdf'):
             filename = filename.replace('.txt', '') + '.pdf'
         
-        result = FileService.save_text_pdf(filename, text_content)
+        result = FileService.save_text_pdf(filename, text_content, use_temp=use_temp)
         status_code = 200 if result.get('success') else 500
         logger.info(f"save_text_pdf result: {result}")
         return jsonify(result), status_code
@@ -255,6 +357,14 @@ def polish_resume():
         return jsonify({"success": False, "error": "resume_text required"}), 400
     
     result = LLMService.polish_resume(resume_text, intensity)
+    
+    if result.get('success'):
+        polished = result.get('polished_resume', '')
+        if polished:
+            changes_result = LLMService.get_changes_summary(resume_text, polished)
+            if changes_result.get('success'):
+                result['changes'] = changes_result.get('changes', [])
+    
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
 
@@ -312,13 +422,24 @@ def tailor_resume():
     resume_text = data.get('resume_text')
     job_description = data.get('job_description')
     intensity = data.get('intensity', 'medium')
+    job_position = (data.get('job_position') or '').strip()
+    company_name = (data.get('company_name') or '').strip()
     
     if not resume_text or not job_description:
         return jsonify({"success": False, "error": "resume_text and job_description required"}), 400
     
     try:
+        combined_description = job_description
+        context_lines = []
+        if job_position:
+            context_lines.append(f"Job Position: {job_position}")
+        if company_name:
+            context_lines.append(f"Company: {company_name}")
+        if context_lines:
+            combined_description = "\n".join(context_lines) + f"\n\n{job_description}"
+
         # Use JobTailorService for comprehensive analysis with LLM
-        tailor_result = JobTailorService.tailor_resume(resume_text, job_description, intensity)
+        tailor_result = JobTailorService.tailor_resume(resume_text, combined_description, intensity)
         
         if not tailor_result:
             return jsonify({"success": False, "error": "Failed to tailor resume"}), 500
@@ -363,13 +484,24 @@ def analyze_fit():
     data = request.get_json()
     resume_text = data.get('resume_text')
     job_description = data.get('job_description')
+    job_position = (data.get('job_position') or '').strip()
+    company_name = (data.get('company_name') or '').strip()
     
     if not resume_text or not job_description:
         return jsonify({"success": False, "error": "resume_text and job_description required"}), 400
     
     try:
+        combined_description = job_description
+        context_lines = []
+        if job_position:
+            context_lines.append(f"Job Position: {job_position}")
+        if company_name:
+            context_lines.append(f"Company: {company_name}")
+        if context_lines:
+            combined_description = "\n".join(context_lines) + f"\n\n{job_description}"
+
         # Use JobTailorService for analysis only (no tailoring)
-        tailor_result = JobTailorService.tailor_resume(resume_text, job_description, intensity='light')
+        tailor_result = JobTailorService.tailor_resume(resume_text, combined_description, intensity='light')
         
         if not tailor_result:
             return jsonify({"success": False, "error": "Failed to analyze fit"}), 500

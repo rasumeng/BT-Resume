@@ -14,12 +14,7 @@ frontend_debug.log
 beyondtheframe-site/
 temp_repo/
 
-# Release binaries (not stored in git, generated on release)
-releases/*.exe
-releases/*.zip
-releases/*.7z
-releases/BTFResume-*/
-installer/windows/*.exe
+# Python build artifacts
+*.egg-info
 
-# Bundled Ollama (downloaded at runtime)
-flutter_app/assets/ollama/
+

@@ -5,7 +5,7 @@ Manages all resume processing and API endpoints.
 
 import logging
 import sys
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
 import atexit
@@ -53,7 +53,7 @@ except Exception as e:
 
 # ─── Flask App Setup ───
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, origins="*", supports_credentials=True)
 
 # ─── Ollama Service Initialization ───
 ollama_service = get_ollama_service()
@@ -99,6 +99,7 @@ def health():
     """
     return jsonify(
         {
+            "success": True,
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
             "service": "resume-ai-api",
@@ -124,11 +125,13 @@ def status():
 # ─── Register Route Blueprints ───
 try:
     from routes.resume_routes import resume_bp
+    from routes.track_routes import track_bp
     
     logger.info("[APP] resume_bp type:")
     logger.info(f"         {type(resume_bp)}")
 
     app.register_blueprint(resume_bp, url_prefix="/api")
+    app.register_blueprint(track_bp, url_prefix="/api")
     logger.info("[OK] Registered resume routes")
     
     # Debug: Print all registered routes
@@ -139,6 +142,50 @@ except Exception as e:
     logger.error(f"[ERR] Failed to register resume routes: {e}")
     import traceback
     logger.error(traceback.format_exc())
+
+# Clean up stale temp PDFs from previous sessions
+try:
+    from config import get_temp_dir
+    from pathlib import Path
+    import time
+    temp_dir = get_temp_dir()
+    now = time.time()
+    cleaned = 0
+    for f in Path(temp_dir).iterdir():
+        if f.is_file() and f.suffix == '.pdf':
+            # Remove temp files older than 1 hour
+            if now - f.stat().st_mtime > 3600:
+                f.unlink(missing_ok=True)
+                cleaned += 1
+    if cleaned:
+        logger.info(f"[OK] Cleaned {cleaned} stale temp PDF(s) from {temp_dir}")
+except Exception as e:
+    logger.warning(f"[WARN] Failed to clean temp PDFs: {e}")
+
+# ─── Serve Web Frontend ───
+# Serve built SPA from web/dist when running as a package
+web_dist = Path(__file__).parent.parent / "web" / "dist"
+if web_dist.exists():
+    logger.info(f"[APP] Serving web frontend from: {web_dist}")
+
+    @app.route("/")
+    def index():
+        return send_from_directory(str(web_dist), "index.html")
+
+    @app.route("/assets/<path:filename>")
+    def serve_assets(filename):
+        return send_from_directory(str(web_dist / "assets"), filename)
+
+    @app.route("/<path:filename>")
+    def serve_static(filename):
+        file_path = web_dist / filename
+        if file_path.exists() and file_path.is_file():
+            return send_from_directory(str(web_dist), filename)
+        # SPA fallback: serve index.html for client-side routing
+        return send_from_directory(str(web_dist), "index.html")
+else:
+    logger.info("[APP] Web frontend not built yet. Run 'npm run build' in web/ directory.")
+    logger.info(f"[APP] Expected path: {web_dist}")
 
 
 # ─── Error Handlers ───

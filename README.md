@@ -9,7 +9,7 @@ A free, local AI resume helper that polishes your resume bullets, tailors your r
 
 ## Why BT Resume?
 
-Most AI resume tools cost money, require an account, or send your personal data to external servers. This is my take on a free alternative — built from scratch in Flutter + Python, powered by open-source LLMs that run entirely on your device.
+Most AI resume tools cost money, require an account, or send your personal data to external servers. This is my take on a free alternative — built from scratch in Python + React, powered by open-source LLMs that run entirely on your device.
 
 ---
 
@@ -29,42 +29,51 @@ Most AI resume tools cost money, require an account, or send your personal data 
 ## Tech Stack
 
 | Layer | Tool |
-|---|---|
-| Frontend | Flutter 3.41.6 (Dart 3.11.4) |
+|---|---|---|
+| Frontend | React 19 + TypeScript + Vite |
 | Backend Language | Python 3.10+ |
-| Desktop Target | Windows (10+) |
 | LLM Runtime | [Ollama](https://ollama.com) |
 | Bullet Polish Model | Mistral 7B (fast, efficient) |
-| Job Tailoring Model | LLaMA 3 8B (stronger instruction following) |
 | PDF Reading | pdfplumber |
 | PDF Generation | ReportLab |
-| HTTP Client | Dio |
 | REST API | Flask with CORS |
-| Installer | NSIS |
-| Auto-Update | flutter_desktop_updater + GitHub Releases |
+| Distribution | PyPI (`pip install btr-resume`) |
 
 ---
 
 ## Quick Start
 
-### For Non-Technical Users: Download the Installer
+### Quick Install (pip)
 
-1. **Download** the latest `BTFResume-Setup-*.exe` from [releases](https://github.com/rasumeng/BT-Resume/releases)
-2. **Run** the installer
-3. **Follow the setup wizard** (handles everything)
-4. **Launch** from your Desktop
+```bash
+pip install btr-resume
+btr serve
+```
 
-That's it! No command line required.
+Opens the web UI at `http://localhost:5000`.
 
-### For Developers: Manual Setup
+### Manual Setup (Development)
 
-Read the [Development Setup](docs/DEVELOPMENT_SETUP.md) guide.
+```bash
+# Install Python package in editable mode
+pip install -e .
+
+# Build the web frontend
+cd web
+npm install
+npm run build
+cd ..
+
+# Start the server
+btr serve
+```
 
 ---
 
 ## Requirements
 
-- Windows 10 or later (64-bit)
+- Python 3.10+
+- [Ollama](https://ollama.com) (auto-installed via `btr setup`)
 - 8GB+ RAM recommended
 - 2GB+ free disk space
 
@@ -83,12 +92,17 @@ Read the [Development Setup](docs/DEVELOPMENT_SETUP.md) guide.
 
 ### First Run Setup
 
-On first launch, the app will:
-1. Start the embedded Python backend
-2. Download the Ollama AI model (~500MB-1GB)
-3. Verify everything is working
+```bash
+btr setup
+```
 
-This may take a few minutes on first run.
+This will install Ollama (if needed) and download the AI model (~500MB-1GB).
+
+Then start the app:
+
+```bash
+btr serve
+```
 
 ---
 
@@ -96,38 +110,25 @@ This may take a few minutes on first run.
 
 ```
 BT-Resume/
-├── flutter_app/                  # Flutter desktop frontend
-│   ├── lib/
-│   │   ├── config/               # App configuration (colors, typography, constants)
-│   │   ├── core/
-│   │   │   └── services/         # API service, app initialization
-│   │   ├── features/
-│   │   │   ├── resumes/          # My Resumes screen
-│   │   │   ├── polish/           # Bullet enhancement screen
-│   │   │   ├── tailor/          # Job customization screen
-│   │   │   ├── feedback/         # Feedback submission screen
-│   │   │   └── setup/            # First-run setup screens
-│   │   ├── shared/               # Reusable widgets and mixins
-│   │   └── main.dart             # App entry point
-│   ├── assets/                   # Icons, images, bundled Python
-│   └── pubspec.yaml
-│
+├── btr/                          # CLI package (btr serve, btr setup)
+│   ├── __init__.py
+│   ├── __main__.py               # python -m btr
+│   └── cli.py                    # CLI commands
 ├── backend/                      # Flask REST API
 │   ├── app.py                    # Flask app with CORS
 │   ├── routes/                   # API endpoint definitions
 │   ├── services/                 # Business logic (LLM, PDF, tailoring)
 │   └── config.py                 # Backend configuration
-│
 ├── core/                         # Shared Python modules
 │   ├── prompts/                  # LLM prompt templates
 │   ├── pdf/                      # PDF generation components
 │   ├── resume_model.py           # Data models
 │   └── utils.py                  # Utility functions
-│
-├── installer/                    # NSIS installer scripts
-├── scripts/                      # Build and release scripts
-├── releases/                     # Built installers
-├── docs/                         # Documentation
+├── web/                          # React SPA frontend
+│   ├── src/                      # Components, screens, styles
+│   ├── package.json
+│   └── vite.config.ts
+├── pyproject.toml
 └── README.md
 ```
 
@@ -135,24 +136,24 @@ BT-Resume/
 
 ## Architecture
 
-### Desktop Application Flow
+### Application Flow
 ```
-┌─────────────────┐
-│  Flutter UI      │  ← Windows Desktop App
-│  (User Interface) │
-└────────┬────────┘
-         │ HTTP/JSON
-         ▼
-┌─────────────────┐
-│  Flask REST API │  ← Embedded Python Backend
-│  (localhost)    │     (runs automatically)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Ollama LLM     │  ← Local AI Model
-│  (Mistral 7B)   │     Runs entirely offline
-└─────────────────┘
+┌─────────────────────┐
+│  React Web UI       │  ← Served by Flask / opened in browser
+│  (User Interface)    │
+└──────────┬──────────┘
+           │ HTTP/JSON (localhost)
+           ▼
+┌─────────────────────┐
+│  Flask REST API     │  ← Python Backend
+│  (localhost:5000)    │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Ollama LLM         │  ← Local AI Model (Mistral 7B)
+│  (localhost:11434)   │     Runs entirely offline
+└─────────────────────┘
 ```
 
 ### API Endpoints
@@ -173,68 +174,28 @@ BT-Resume/
 ## Building from Source
 
 ### Prerequisites
-- Flutter SDK 3.41.6+
 - Python 3.10+
-- NSIS 3.x (for installer)
+- Node.js 18+ (for web frontend)
 - Git
 
 ### Build Commands
 
-```powershell
-# Build Flutter app
-cd flutter_app
-flutter pub get
-flutter build windows --release
+```bash
+# Install the package in editable mode
+pip install -e .
 
-# Build NSIS installer
-cd installer/windows
-makensis installer.nsi
+# Build the web frontend
+cd web
+npm install
+npm run build
+cd ..
 
-# Or use the release script (creates everything)
-.\scripts\release.ps1 -Version "1.1.0"
+# Build the Python wheel
+python -m build
 ```
 
 ### Output
-Built installer: `releases/BTFResume-*-Setup.exe`
-
----
-
-## Releasing Updates
-
-See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for detailed instructions.
-
-### Quick Release Steps
-
-```powershell
-# 1. Tag the release
-git tag v1.1.0
-
-# 2. Push to trigger GitHub Actions
-git push origin v1.1.0
-```
-
-GitHub Actions will:
-1. Build the Flutter app
-2. Create the NSIS installer
-3. Generate the update manifest
-4. Create a GitHub Release
-5. Update GitHub Pages for auto-updater
-
----
-
-## Roadmap
-
-- [x] Flutter desktop GUI
-- [x] Resume polishing with AI
-- [x] Job tailoring
-- [x] Resume grading
-- [x] PDF generation
-- [x] Auto-update system
-- [ ] File upload with drag-and-drop
-- [ ] Cover letter generator
-- [ ] Export to DOCX/HTML
-- [ ] macOS support
-- [ ] Linux support
+Built wheel: `dist/btr_resume-*.whl`
 
 ---
 

@@ -37,20 +37,13 @@ if __name__ == "__main__":
     print(f"[MODE] {'Gunicorn' if use_gunicorn else 'Flask Development'}")
     print("=" * 60)
     
-    # Initialize Ollama through app module - FAIL FAST if initialization fails
+    # Initialize Ollama through app module - non-fatal if Ollama is unavailable
     print("\n[INFO] Initializing Ollama LLM Service...")
     if not initialize_ollama():
         print("\n" + "=" * 60)
-        print("[FAIL] FATAL ERROR: Ollama initialization failed!")
-        print("=" * 60)
-        print("\n[WARN] Ollama is required but not responding.")
-        print("Please ensure Ollama is installed and running:")
-        print("   -> Windows: Run 'ollama serve' in terminal or click Ollama app")
-        print("   -> macOS/Linux: Run 'ollama serve' in terminal")
-        print("   -> Download from: https://ollama.ai")
-        print("\nBackend cannot start without Ollama.")
+        print("[WARN] Ollama is not available. Starting backend anyway.")
+        print("[WARN] Some features will be disabled until Ollama is running.")
         print("=" * 60 + "\n")
-        sys.exit(1)
     
     print("\n[OK] Backend is ready for Flutter app")
     print("[OK] Check http://localhost:5000/api/health to verify\n")

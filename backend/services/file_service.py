@@ -17,6 +17,34 @@ from services.alteration_service import AlterationService, AlterationMetadata
 
 class FileService:
     """Service for managing resume files."""
+
+    @staticmethod
+    def save_uploaded_resume(file_storage, filename: Optional[str] = None):
+        """Save an uploaded PDF resume into the resumes directory."""
+        try:
+            import re
+
+            resumes_dir = get_resumes_dir()
+            resumes_dir.mkdir(parents=True, exist_ok=True)
+
+            original_name = filename or getattr(file_storage, 'filename', '')
+            safe_name = Path(original_name).name
+            safe_name = re.sub(r'[^A-Za-z0-9._ -]+', '_', safe_name).strip()
+
+            if not safe_name:
+                raise ValueError("invalid filename")
+
+            if not safe_name.lower().endswith('.pdf'):
+                raise ValueError("only PDF files allowed")
+
+            file_path = resumes_dir / safe_name
+            file_storage.save(str(file_path))
+
+            logger.info(f"✓ Saved uploaded resume: {safe_name}")
+            return {"success": True, "filename": safe_name, "path": str(file_path)}
+        except Exception as e:
+            logger.error(f"[ERR] Error saving uploaded resume: {e}")
+            return {"success": False, "error": str(e)}
     
     @staticmethod
     def list_resumes():
@@ -31,11 +59,16 @@ class FileService:
             # Get .txt and .pdf files (exclude .json metadata files)
             for file in resumes_dir.iterdir():
                 if file.is_file() and not file.name.endswith('.json'):
+                    modified = file.stat().st_mtime
+                    size = file.stat().st_size
                     files.append({
+                        "filename": file.name,
                         "name": file.name,
                         "path": str(file),
-                        "size": file.stat().st_size,
-                        "modified": file.stat().st_mtime,
+                        "file_size": size,
+                        "size": size,
+                        "last_modified": modified,
+                        "modified": modified,
                         "created": file.stat().st_ctime
                     })
             
@@ -100,7 +133,7 @@ class FileService:
             
             # Import inside method to avoid Flask module caching issues
             logger.info("Importing PDF generation modules...")
-            from core.pdf import generate_pdf
+            from core.pdf_generator import generate_pdf
             from core.resume_model import ResumData
             logger.info("✓ Imported generate_pdf and ResumData")
                 
@@ -148,7 +181,7 @@ class FileService:
             return {"success": False, "error": str(e)}
     
     @staticmethod
-    def save_text_pdf(filename, text_content):
+    def save_text_pdf(filename, text_content, use_temp=False):
         """
         Generate a professional PDF from polished/tailored plain text using template.
         
@@ -156,11 +189,12 @@ class FileService:
         1. Parse plain text into structured JSON
         2. Build ResumData object from JSON
         3. Generate professional PDF using pdf_generator template
-        4. Save to resumes/ directory (user storage, not temp storage)
+        4. Save to resumes/ directory (user storage) or temp/ directory
         
         Args:
             filename: Output filename (should end with .pdf)
             text_content: Plain text resume content (from polishing/tailoring)
+            use_temp: If True, save to temp/ directory instead of resumes/
             
         Returns:
             {"success": true, "filename": ..., "path": ...} or error dict
@@ -169,7 +203,7 @@ class FileService:
             logger.info(f"[OK] Starting polished resume PDF generation for {filename}")
             
             # Step 1: Parse plain text into structured JSON
-            from backend.services.llm import LLMService
+            from services.llm import LLMService
             parse_result = LLMService.parse_to_pdf_format(text_content)
             
             if not parse_result.get("success"):
@@ -193,16 +227,20 @@ class FileService:
             # Step 3: Generate professional PDF using template
             from core.pdf_generator import generate_pdf
             
-            # Save to resumes/ directory (user storage) instead of outputs/ (temp)
-            resumes_dir = get_resumes_dir()
+            if use_temp:
+                from config import get_temp_dir
+                import uuid
+                target_dir = get_temp_dir()
+                # Use UUID to avoid collisions between concurrent polish/tailor sessions
+                temp_filename = f"temp_{uuid.uuid4().hex}.pdf"
+                output_path = target_dir / temp_filename
+            else:
+                from config import get_resumes_dir
+                target_dir = get_resumes_dir()
+                polished_filename = f"polished_{filename}" if not filename.startswith("polished_") else filename
+                output_path = target_dir / polished_filename
             
-            # Add "polished_" prefix to distinguish from originals
-            polished_filename = f"polished_{filename}" if not filename.startswith("polished_") else filename
-            output_path = resumes_dir / polished_filename
-            
-            # Create directory if it doesn't exist
-            resumes_dir.mkdir(parents=True, exist_ok=True)
-            
+            target_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Generating PDF to: {output_path}")
             
             # Generate PDF using professional template
@@ -210,33 +248,32 @@ class FileService:
             
             if not success:
                 logger.error(f"PDF generation returned False")
-                # Even if generate_pdf returns False, check if file was created
                 if output_path.exists():
                     logger.warning(f"PDF was created despite False return")
                     success = True
                 else:
                     raise Exception("PDF generation failed and file was not created")
             
-            # Final verification
             if not output_path.exists():
                 logger.error(f"PDF file does not exist at {output_path}")
                 logger.error(f"Directory listing:")
-                for item in resumes_dir.iterdir():
+                for item in target_dir.iterdir():
                     logger.error(f"  - {item}")
                 raise Exception(f"PDF file not found at {output_path}")
             
-            logger.info(f"✓ Generated professional polished resume PDF: {polished_filename}")
+            out_filename = output_path.name
+            logger.info(f"✓ Generated professional polished resume PDF: {out_filename}")
             
             return {
                 "success": True,
-                "filename": polished_filename,
+                "filename": out_filename,
                 "path": str(output_path)
             }
             
         except Exception as e:
             logger.error(f"[ERR] Error generating polished resume PDF: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
-    
+
     @staticmethod
     def update_resume(filename, content):
         """
@@ -257,8 +294,10 @@ class FileService:
             if not file_path.parent == resumes_dir:
                 raise ValueError("Invalid file path")
             
+            # Upload flows use this endpoint to create a new text resume when the file does not exist yet.
+            # Preserve the existing update behavior for known files, but allow creation for first-time uploads.
             if not file_path.exists():
-                raise FileNotFoundError(f"Resume not found: {filename}")
+                resumes_dir.mkdir(parents=True, exist_ok=True)
             
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
@@ -309,7 +348,7 @@ class FileService:
         """
         Extract text from a resume file (PDF or TXT).
         Accepts either full path or just filename.
-        Checks both resumes/ and flutter_app/resumes/ directories.
+        Checks the resumes/ directory.
         
         Args:
             filename: Name of the resume file or full path
@@ -366,7 +405,7 @@ class FileService:
 
                 return None
             
-            # If not found in resumes/, check flutter_app/resumes/
+            # If not found, try alternate name variants
             if not file_path.exists():
                 resolved = _try_resolve_alternate_name(filename)
                 if resolved is not None:
@@ -374,14 +413,6 @@ class FileService:
                     filename = resolved.name
                     logger.info(f"Resolved resume filename to existing file: {filename}")
 
-            if not file_path.exists():
-                flutter_resumes = Path.cwd() / "flutter_app" / "resumes" / filename
-                logger.warning(f"🔍 DEBUG: Checking fallback path: {flutter_resumes}")
-                logger.warning(f"   fallback exists: {flutter_resumes.exists()}")
-                if flutter_resumes.exists():
-                    file_path = flutter_resumes
-                    logger.info(f"Found resume in flutter_app/resumes: {filename}")
-            
             # Security: Prevent path traversal
             if not file_path.exists():
                 raise FileNotFoundError(f"Resume not found: {filename}")
@@ -467,7 +498,7 @@ class FileService:
             # Step 2: Parse and cache JSON structure (if not provided)
             if parsed_json is None:
                 logger.info("Step 2: Parsing text into structured JSON...")
-                from backend.services.llm import LLMService
+                from services.llm import LLMService
                 parse_result = LLMService.parse_to_pdf_format(altered_text)
                 
                 if not parse_result.get("success"):
@@ -483,8 +514,8 @@ class FileService:
             # Step 3: Build ResumData and generate PDF
             logger.info("Step 3: Building ResumData object...")
             from core.resume_model import ResumData
-            from core.pdf import generate_pdf
-            
+            from core.pdf_generator import generate_pdf
+
             try:
                 resume_data = ResumData.from_llm_json(parsed_json)
             except Exception as e:

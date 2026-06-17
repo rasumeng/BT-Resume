@@ -54,6 +54,16 @@ def get_outputs_dir():
     outputs_dir.mkdir(parents=True, exist_ok=True)
     return outputs_dir
 
+def get_temp_dir():
+    """Get the temp directory for auto-generated PDF previews (polished/tailored).
+
+    These files are disposable and cleaned up on backend restart.
+    """
+    app_data = get_app_data_dir()
+    temp_dir = app_data / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    return temp_dir
+
 def get_models_dir():
     """Get the models directory."""
     base_dir = get_base_dir()

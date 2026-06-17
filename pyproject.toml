@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "btr-resume"
+version = "1.0"
+description = "AI-Powered Resume Builder - Polish, tailor, and optimize your resume locally"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Robert Asumeng", email = "asumengrobert787@gmail.com" },
+]
+requires-python = ">=3.10"
+dependencies = [
+    "Flask>=3.1",
+    "flask-cors>=6.0",
+    "pdfplumber>=0.11",
+    "reportlab>=4.4",
+    "PyMuPDF>=1.24",
+    "requests>=2.32",
+    "PyPDF2>=3.0",
+]
+
+[project.scripts]
+btr = "btr.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rasumeng/BT-Resume"
+Repository = "https://github.com/rasumeng/BT-Resume"
+
+[tool.setuptools.packages.find]
+include = ["btr*", "backend*", "core*"]
+
+[tool.setuptools.package-data]
+backend = ["**/*.py"]
+core = ["**/*.py"]
