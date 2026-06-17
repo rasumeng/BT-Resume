@@ -18,7 +18,7 @@ from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
 
-from config import get_resumes_dir
+from backend.config import get_resumes_dir
 
 
 @dataclass

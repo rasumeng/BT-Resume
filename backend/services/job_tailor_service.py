@@ -9,7 +9,7 @@ from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
 
-from services.llm import LLMService
+from backend.services.llm import LLMService
 from core.prompts import job_tailor_prompt
 
 

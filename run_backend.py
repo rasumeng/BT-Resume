@@ -1,34 +1,23 @@
 """
-Backend Launcher Script
+Backend Launcher Script (Development Only)
 
-This script starts the Flask backend API server.
-Called by the main application to serve the HTTP API.
+Starts the Flask backend API server. Requires the package to be installed
+in editable mode: pip install -e .
 
-Usage:
-    python run_backend.py              # Use Flask development server
-    python run_backend.py --gunicorn   # Use Gunicorn WSGI server
+For production use: btr serve
 """
 
 import sys
 import os
-import atexit
 import subprocess
 from pathlib import Path
 
-# Add backend to path
-backend_path = Path(__file__).parent / "backend"
-sys.path.insert(0, str(backend_path))
-
-# Add core to path  
-core_path = Path(__file__).parent / "core"
-sys.path.insert(0, str(core_path))
-
 if __name__ == "__main__":
     use_gunicorn = "--gunicorn" in sys.argv
-    
+
     from backend.app import app, initialize_ollama
     from backend.config import FLASK_HOST, FLASK_PORT
-    
+
     print("[START] Resume AI Backend Starting...")
     print("=" * 60)
     print(f"[HOST] {FLASK_HOST}")
@@ -36,16 +25,15 @@ if __name__ == "__main__":
     print(f"[URL]  http://{FLASK_HOST}:{FLASK_PORT}/api")
     print(f"[MODE] {'Gunicorn' if use_gunicorn else 'Flask Development'}")
     print("=" * 60)
-    
-    # Initialize Ollama through app module - non-fatal if Ollama is unavailable
+
     print("\n[INFO] Initializing Ollama LLM Service...")
     if not initialize_ollama():
         print("\n" + "=" * 60)
         print("[WARN] Ollama is not available. Starting backend anyway.")
         print("[WARN] Some features will be disabled until Ollama is running.")
         print("=" * 60 + "\n")
-    
-    print("\n[OK] Backend is ready for Flutter app")
+
+    print("\n[OK] Backend is ready")
     print("[OK] Check http://localhost:5000/api/health to verify\n")
     
     if use_gunicorn:

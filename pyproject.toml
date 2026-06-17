@@ -21,6 +21,19 @@ dependencies = [
     "requests>=2.32",
     "PyPDF2>=3.0",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: News/Directory",
+    "Topic :: Text Processing :: General",
+]
+
+[project.optional-dependencies]
+gunicorn = ["gunicorn>=20"]
 
 [project.scripts]
 btr = "btr.cli:main"
@@ -29,9 +42,13 @@ btr = "btr.cli:main"
 Homepage = "https://github.com/rasumeng/BT-Resume"
 Repository = "https://github.com/rasumeng/BT-Resume"
 
+[tool.setuptools]
+include-package-data = false
+
 [tool.setuptools.packages.find]
-include = ["btr*", "backend*", "core*"]
+include = ["btr*", "backend*", "core*", "web*"]
 
 [tool.setuptools.package-data]
 backend = ["**/*.py"]
 core = ["**/*.py"]
+web = ["dist/**"]

@@ -7,12 +7,12 @@ outputs/
 *.pdf
 .DS_Store
 .webui_secret_key
+dist/
+build/
+*.egg-info
 
 # External repos (not part of this project)
 beyondtheframe-site/
-
-# Python build artifacts
-*.egg-info
 
 # User feedback data
 feedback/

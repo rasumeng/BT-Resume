@@ -29,12 +29,8 @@ flask_logger = logging.getLogger('flask')
 flask_logger.setLevel(logging.ERROR)  # Only show flask errors
 flask_logger.propagate = False
 
-# Add core module to path
-core_path = Path(__file__).parent.parent / "core"
-sys.path.insert(0, str(core_path))
-
-from config import FLASK_HOST, FLASK_PORT, OLLAMA_HOST, get_resumes_dir, get_outputs_dir
-from services.ollama_service import get_ollama_service
+from backend.config import FLASK_HOST, FLASK_PORT, OLLAMA_HOST, get_resumes_dir, get_outputs_dir
+from backend.services.ollama_service import get_ollama_service
 
 # ─── Initialize Required Directories ───
 logger.info("=" * 60)
@@ -124,8 +120,8 @@ def status():
 
 # ─── Register Route Blueprints ───
 try:
-    from routes.resume_routes import resume_bp
-    from routes.track_routes import track_bp
+    from backend.routes.resume_routes import resume_bp
+    from backend.routes.track_routes import track_bp
     
     logger.info("[APP] resume_bp type:")
     logger.info(f"         {type(resume_bp)}")
@@ -145,7 +141,7 @@ except Exception as e:
 
 # Clean up stale temp PDFs from previous sessions
 try:
-    from config import get_temp_dir
+    from backend.config import get_temp_dir
     from pathlib import Path
     import time
     temp_dir = get_temp_dir()
@@ -163,9 +159,28 @@ except Exception as e:
     logger.warning(f"[WARN] Failed to clean temp PDFs: {e}")
 
 # ─── Serve Web Frontend ───
-# Serve built SPA from web/dist when running as a package
-web_dist = Path(__file__).parent.parent / "web" / "dist"
-if web_dist.exists():
+# Try multiple locations: source tree (dev), installed package, editable install
+def _find_web_dist():
+    # 1. Installed package data (pip install)
+    try:
+        import web as web_pkg
+        pkg_dist = Path(web_pkg.__file__).parent / "dist"
+        if pkg_dist.exists():
+            return pkg_dist
+    except (ImportError, AttributeError):
+        pass
+    # 2. Source tree (dev / pip install -e .)
+    src_dist = Path(__file__).parent.parent / "web" / "dist"
+    if src_dist.exists():
+        return src_dist
+    # 3. Backend package sibling (some build setups)
+    sibling_dist = Path(__file__).parent / "web" / "dist"
+    if sibling_dist.exists():
+        return sibling_dist
+    return None
+
+web_dist = _find_web_dist()
+if web_dist is not None:
     logger.info(f"[APP] Serving web frontend from: {web_dist}")
 
     @app.route("/")
@@ -181,11 +196,9 @@ if web_dist.exists():
         file_path = web_dist / filename
         if file_path.exists() and file_path.is_file():
             return send_from_directory(str(web_dist), filename)
-        # SPA fallback: serve index.html for client-side routing
         return send_from_directory(str(web_dist), "index.html")
 else:
     logger.info("[APP] Web frontend not built yet. Run 'npm run build' in web/ directory.")
-    logger.info(f"[APP] Expected path: {web_dist}")
 
 
 # ─── Error Handlers ───

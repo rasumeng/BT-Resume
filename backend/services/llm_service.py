@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-from config import MODELS
+from backend.config import MODELS
 
 
 def _extract_json_from_response(response: str) -> Dict:

@@ -1,6 +1,8 @@
 """
 Tracking Routes - Lightweight anonymous usage analytics.
-Logs events to a JSONL file for aggregate insights.
+Logs events locally and optionally sends to external metrics API.
+
+External tracking can be disabled by setting BT_RESUME_ENABLE_ANALYTICS=false.
 """
 
 import json
@@ -14,15 +16,15 @@ logger = logging.getLogger(__name__)
 
 track_bp = Blueprint('track', __name__)
 
+METRICS_API = 'https://beyondtheframe.vercel.app/api/track'
+
 
 def get_track_dir() -> Path:
-    """Get or create tracking data directory."""
-    track_dir = Path(__file__).parent.parent.parent / "usage"
+    """Get or create tracking data directory in user's app data."""
+    from backend.config import get_app_data_dir
+    track_dir = get_app_data_dir() / "usage"
     track_dir.mkdir(exist_ok=True)
     return track_dir
-
-
-METRICS_API = 'https://beyondtheframe.vercel.app/api/track'
 
 
 def log_event(entry: dict) -> None:
@@ -33,7 +35,12 @@ def log_event(entry: dict) -> None:
 
 
 def send_to_redis_metrics(entry: dict) -> None:
-    """POST event to the Redis metrics API (mirrors frontend tracking)."""
+    """POST event to the Redis metrics API (mirrors frontend tracking).
+    Respects the BT_RESUME_ENABLE_ANALYTICS env var.
+    """
+    from backend.config import ENABLE_ANALYTICS
+    if not ENABLE_ANALYTICS:
+        return
     try:
         requests.post(
             METRICS_API,

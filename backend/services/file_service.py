@@ -12,8 +12,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from config import get_resumes_dir, get_outputs_dir
-from services.alteration_service import AlterationService, AlterationMetadata
+from backend.config import get_resumes_dir, get_outputs_dir
+from backend.services.alteration_service import AlterationService, AlterationMetadata
 
 class FileService:
     """Service for managing resume files."""

@@ -25,12 +25,6 @@ def ensure_directories():
 
 def start_server(host="127.0.0.1", port=5000):
     """Start the Flask server."""
-    # Ensure paths are set up
-    backend_path = Path(__file__).parent.parent / "backend"
-    core_path = Path(__file__).parent.parent / "core"
-    sys.path.insert(0, str(backend_path))
-    sys.path.insert(0, str(core_path))
-
     from backend.app import app, initialize_ollama
 
     # Start Ollama in background so Flask serves immediately
@@ -76,12 +70,7 @@ def cmd_setup(args):
     print("[OK] Directories ready")
 
     # Import ollama service to trigger setup
-    backend_path = Path(__file__).parent.parent / "backend"
-    core_path = Path(__file__).parent.parent / "core"
-    sys.path.insert(0, str(backend_path))
-    sys.path.insert(0, str(core_path))
-
-    from services.ollama_service import get_ollama_service
+    from backend.services.ollama_service import get_ollama_service
     service = get_ollama_service()
     print("Starting Ollama service...")
     if service.startup():

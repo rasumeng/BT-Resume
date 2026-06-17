@@ -11,9 +11,9 @@ import threading
 
 logger = logging.getLogger(__name__)
 
-from services.file_service import FileService
-from services.llm import LLMService
-from services.feedback_service import FeedbackService
+from backend.services.file_service import FileService
+from backend.services.llm import LLMService
+from backend.services.feedback_service import FeedbackService
 
 # Create blueprint
 resume_bp = Blueprint('resume', __name__)
@@ -44,7 +44,7 @@ def get_resume():
 @resume_bp.route('/get-resume-pdf', methods=['GET'])
 def get_resume_pdf():
     """Stream a resume PDF for browser preview."""
-    from config import get_resumes_dir, get_temp_dir
+    from backend.config import get_resumes_dir, get_temp_dir
 
     filename = request.args.get('filename')
     if not filename:
@@ -99,8 +99,8 @@ def update_resume():
 def upload_resume():
     """Upload a PDF resume, store it, and cache parsed text when possible."""
     from pathlib import Path
-    from services.cache_service import CacheService
-    from config import get_resumes_dir
+    from backend.services.cache_service import CacheService
+    from backend.config import get_resumes_dir
 
     try:
         if 'file' not in request.files:
@@ -233,7 +233,7 @@ def save_text_pdf():
 def delete_resume():
     """Delete a resume file."""
     from pathlib import Path
-    from services.cache_service import CacheService
+    from backend.services.cache_service import CacheService
     
     filename = request.args.get('filename')
     
@@ -242,7 +242,7 @@ def delete_resume():
     
     # Invalidate the cached parsed data
     try:
-        from config import get_resumes_dir
+        from backend.config import get_resumes_dir
         resumes_dir = get_resumes_dir()
         resume_path = Path(resumes_dir) / filename
         CacheService.invalidate_cache(resume_path)
@@ -415,7 +415,7 @@ def tailor_resume():
         "intensity": "light|medium|heavy" (optional, default: "medium")
     }
     """
-    from services.job_tailor_service import JobTailorService
+    from backend.services.job_tailor_service import JobTailorService
     from dataclasses import asdict
     
     data = request.get_json()
@@ -478,7 +478,7 @@ def analyze_fit():
         "job_description": "..."
     }
     """
-    from services.job_tailor_service import JobTailorService
+    from backend.services.job_tailor_service import JobTailorService
     from dataclasses import asdict
     
     data = request.get_json()
@@ -543,7 +543,7 @@ def grade_resume():
     """
     import sys
     from pathlib import Path
-    from services.cache_service import CacheService
+    from backend.services.cache_service import CacheService
     
     print("=== grade_resume route called ===", file=sys.stderr, flush=True)
     sys.stderr.flush()
@@ -556,7 +556,7 @@ def grade_resume():
         # Get resume text either directly or from file
         if not resume_text and filename:
             # First check if we have cached parsed data
-            from config import get_resumes_dir
+            from backend.config import get_resumes_dir
             resumes_dir = get_resumes_dir()
             resume_path = Path(resumes_dir) / filename
             
@@ -628,8 +628,8 @@ def parse_resume():
     if filename and result.get('success'):
         try:
             from pathlib import Path
-            from config import get_resumes_dir
-            from services.cache_service import CacheService
+            from backend.config import get_resumes_dir
+            from backend.services.cache_service import CacheService
             
             parsed_data = result.get('parsed_resume', {})
             resumes_dir = get_resumes_dir()
