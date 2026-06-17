@@ -4,17 +4,17 @@ __pycache__/
 .env
 .aider*
 outputs/
-resumes/
 *.pdf
 .DS_Store
 .webui_secret_key
-frontend_debug.log
 
 # External repos (not part of this project)
 beyondtheframe-site/
-temp_repo/
 
 # Python build artifacts
 *.egg-info
+
+# User feedback data
+feedback/
 
 
