@@ -39,7 +39,7 @@ jobs:
         run: |
           set -e
           SEP=":"
-          [ "$RUNNER_OS" = "Windows" ] && SEP=";"
+          if [ "$RUNNER_OS" = "Windows" ]; then SEP=";"; fi
           python -m PyInstaller --onefile --name btr \
             --add-data "web/dist${SEP}web/dist" \
             --hidden-import backend.app \
