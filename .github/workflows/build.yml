@@ -34,6 +34,23 @@ jobs:
           pip install -e .
           pip install pyinstaller
 
+      - name: Debug — verify imports before PyInstaller
+        shell: bash
+        run: |
+          python -c "
+import sys
+print(f'Python: {sys.executable}')
+print(f'Version: {sys.version}')
+import backend.app as ba
+print(f'backend.app: {ba.__file__}')
+import backend.config as bc
+print(f'backend.config: {bc.__file__}')
+import core.resume_analyzer
+print('All imports OK')
+import web
+print(f'web package: {web.__file__}')
+"
+
       - name: Build executable via PyInstaller
         shell: bash
         run: |
