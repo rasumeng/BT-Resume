@@ -3,7 +3,28 @@
 A free, local AI resume helper that polishes your resume bullets, tailors your resume to job descriptions, and formats new experience — all running privately on your own machine. No API keys, no subscriptions, no data leaving your device.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/btr-resume)](https://pypi.org/project/btr-resume/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/btr-resume)](https://pypi.org/project/btr-resume/)
 [![GitHub Release](https://img.shields.io/github/v/release/rasumeng/BT-Resume)](https://github.com/rasumeng/BT-Resume/releases)
+
+---
+
+## Quick Start
+
+### Prerequisites
+- **Python 3.10+** — [Download Python](https://python.org/downloads)
+- **Ollama** — Download from [ollama.com](https://ollama.com) (handled automatically on first run)
+
+### Install & Run
+
+```bash
+pip install btr-resume
+btr serve
+```
+
+That's it. Your browser opens to `http://localhost:5000` with the BT Resume web UI.
+
+> **First run:** `btr serve` will automatically prompt you to install Ollama and download the Mistral 7B model (~700MB). Just follow the on-screen instructions.
 
 ---
 
@@ -21,40 +42,72 @@ Most AI resume tools cost money, require an account, or send your personal data 
 - **Resume Grading** — get scores and feedback on your resume's effectiveness
 - **PDF + TXT input** — works with both plain text and real PDF resumes
 - **PDF output** — generates a clean, formatted PDF resume ready to send
-- **Auto-updates** — automatically stays up-to-date with new features and fixes
 - **100% offline** — no internet connection required after setup, no API keys, completely free
+
+---
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `btr serve` | Start the server and open the browser (same as plain `btr`) |
+| `btr` | Start the server and open the browser |
+| `btr setup` | Manual setup: install Ollama and download the AI model |
+
+---
+
+## Configuration
+
+BT Resume is zero-config by default, but you can customize via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BT_RESUME_HOST` | `127.0.0.1` | Server bind address |
+| `BT_RESUME_PORT` | `5000` | Server port |
+| `BT_RESUME_DEBUG` | `false` | Enable debug logging |
+| `BT_RESUME_OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama server URL |
+| `BT_RESUME_ENABLE_ANALYTICS` | `true` | Anonymous usage tracking (set to `false` to disable) |
+| `BT_RESUME_SECRET_KEY` | *(auto-generated)* | Flask secret key (persisted across restarts) |
+
+Example:
+
+```bash
+BT_RESUME_PORT=8080 BT_RESUME_DEBUG=true btr serve
+```
+
+---
+
+## Requirements
+
+- **OS:** Windows, macOS, or Linux
+- **Python:** 3.10+
+- **RAM:** 8GB+ recommended
+- **Disk:** 2GB+ free space (for the AI model)
+- **Ollama:** Installed automatically on first run
 
 ---
 
 ## Tech Stack
 
 | Layer | Tool |
-|---|---|---|
+|---|---|
 | Frontend | React 19 + TypeScript + Vite |
-| Backend Language | Python 3.10+ |
+| Backend | Python 3.10+ / Flask |
 | LLM Runtime | [Ollama](https://ollama.com) |
-| Bullet Polish Model | Mistral 7B (fast, efficient) |
+| AI Model | Mistral 7B (fast, efficient) |
 | PDF Reading | pdfplumber |
 | PDF Generation | ReportLab |
-| REST API | Flask with CORS |
-| Distribution | PyPI (`pip install btr-resume`) |
+| Distribution | PyPI — `pip install btr-resume` |
 
 ---
 
-## Quick Start
-
-### Quick Install (pip)
+## Building from Source
 
 ```bash
-pip install btr-resume
-btr serve
-```
+# Clone the repo
+git clone https://github.com/rasumeng/BT-Resume.git
+cd BT-Resume
 
-Opens the web UI at `http://localhost:5000`.
-
-### Manual Setup (Development)
-
-```bash
 # Install Python package in editable mode
 pip install -e .
 
@@ -65,42 +118,6 @@ npm run build
 cd ..
 
 # Start the server
-btr serve
-```
-
----
-
-## Requirements
-
-- Python 3.10+
-- [Ollama](https://ollama.com) (auto-installed via `btr setup`)
-- 8GB+ RAM recommended
-- 2GB+ free disk space
-
----
-
-## Usage
-
-### Application Tabs
-
-| Tab | Description |
-|-----|-------------|
-| **My Resumes** | View and manage all your resumes |
-| **Polish** | Enhance your bullet points with AI |
-| **Tailor** | Customize resume for specific job descriptions |
-| **Feedback** | Submit feature requests and bug reports |
-
-### First Run Setup
-
-```bash
-btr setup
-```
-
-This will install Ollama (if needed) and download the AI model (~500MB-1GB).
-
-Then start the app:
-
-```bash
 btr serve
 ```
 
@@ -136,7 +153,6 @@ BT-Resume/
 
 ## Architecture
 
-### Application Flow
 ```
 ┌─────────────────────┐
 │  React Web UI       │  ← Served by Flask / opened in browser
@@ -156,52 +172,11 @@ BT-Resume/
 └─────────────────────┘
 ```
 
-### API Endpoints
-- `GET  /api/health` — Backend health check
-- `GET  /api/status` — Detailed service status
-- `GET  /api/list-resumes` — List all resumes
-- `GET  /api/get-resume` — Load specific resume
-- `PUT  /api/update-resume` — Update resume content
-- `POST /api/delete-resume` — Delete a resume
-- `POST /api/polish-bullets` — Enhance bullet points
-- `POST /api/tailor-resume` — Customize for job
-- `POST /api/grade-resume` — Score and analyze
-- `POST /api/parse-resume` — Parse uploaded resume
-- `POST /api/save-resume-pdf` — Generate PDF output
-
----
-
-## Building from Source
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+ (for web frontend)
-- Git
-
-### Build Commands
-
-```bash
-# Install the package in editable mode
-pip install -e .
-
-# Build the web frontend
-cd web
-npm install
-npm run build
-cd ..
-
-# Build the Python wheel
-python -m build
-```
-
-### Output
-Built wheel: `dist/btr_resume-*.whl`
-
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
+MIT License — see [LICENSE](LICENSE)
 
 ---
 
