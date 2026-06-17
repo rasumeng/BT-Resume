@@ -7,7 +7,7 @@ name = "btr-resume"
 version = "1.0"
 description = "AI-Powered Resume Builder - Polish, tailor, and optimize your resume locally"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
     { name = "Robert Asumeng", email = "asumengrobert787@gmail.com" },
 ]
@@ -23,12 +23,11 @@ dependencies = [
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Office/Business :: News/Directory",
+    "Topic :: Office/Business :: News/Diary",
     "Topic :: Text Processing :: General",
 ]
 
