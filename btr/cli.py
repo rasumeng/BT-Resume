@@ -43,12 +43,6 @@ def start_server(host="127.0.0.1", port=5000):
 
 
 def cmd_serve(args):
-    """Start server only."""
-    ensure_directories()
-    start_server(args.host, args.port)
-
-
-def cmd_open(args):
     """Start server and open browser."""
     ensure_directories()
     url = f"http://{args.host}:{args.port}"
@@ -117,7 +111,7 @@ Examples:
         cmd_setup(args)
     else:
         # Default: start server and open browser
-        cmd_open(args)
+        cmd_serve(args)
 
 
 if __name__ == "__main__":

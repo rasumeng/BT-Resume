@@ -161,6 +161,11 @@ except Exception as e:
 # ─── Serve Web Frontend ───
 # Try multiple locations: source tree (dev), installed package, editable install
 def _find_web_dist():
+    # 0. PyInstaller frozen bundle
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        meipass_dist = Path(sys._MEIPASS) / "web" / "dist"
+        if meipass_dist.exists():
+            return meipass_dist
     # 1. Installed package data (pip install)
     try:
         import web as web_pkg
