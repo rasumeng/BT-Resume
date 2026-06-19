@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "btr-resume"
-version = "1.0.2"
+version = "1.0.6"
 description = "AI-Powered Resume Builder - Polish, tailor, and optimize your resume locally"
 readme = "README.md"
 license = "MIT"

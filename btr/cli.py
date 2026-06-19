@@ -29,14 +29,18 @@ def start_server(host="127.0.0.1", port=5000):
 
     # Start Ollama in background so Flask serves immediately
     def init_ollama_bg():
+        from backend.services.ollama_service import OllamaService
         print("\n[INFO] Initializing Ollama LLM Service...")
-        print("[INFO] Checking for Ollama (install from https://ollama.com if missing)...")
+        print("[INFO] Checking for Ollama...")
         success = initialize_ollama()
         if success:
             print("[OK] Ollama service ready - AI features enabled")
         else:
             print("[WARN] Ollama could not start. AI features (grade, polish, tailor) will be unavailable.")
-            print("[WARN] Install Ollama from https://ollama.com, then restart with 'btr serve'")
+            print()
+            print(f"To install Ollama, run:\n{OllamaService.get_install_command()}")
+            print()
+            print("Then restart with 'btr serve'")
 
     thread = threading.Thread(target=init_ollama_bg, daemon=True)
     thread.start()
@@ -69,13 +73,18 @@ def cmd_setup(args):
     print("[OK] Directories ready")
 
     # Import ollama service to trigger setup
-    from backend.services.ollama_service import get_ollama_service
+    from backend.services.ollama_service import get_ollama_service, OllamaService
     service = get_ollama_service()
     print("Starting Ollama service (this will download the ~4.1GB model if not cached)...")
     if service.startup():
         print("[OK] Setup complete! Ollama is ready with mistral:7b")
     else:
-        print("[WARN] Setup failed. Install Ollama from https://ollama.com and run 'btr setup' again")
+        print("[WARN] Setup failed.")
+        print()
+        print("To install Ollama, run:")
+        print(OllamaService.get_install_command())
+        print()
+        print("Then run 'btr setup' again")
 
 
 def main():

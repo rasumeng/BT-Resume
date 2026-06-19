@@ -60,8 +60,8 @@ export default function TailorScreen() {
   const currentStep = phaseToStep[phase] || 1;
   const analysis = state.tailor.data;
   const tailoredPdfName = state.tailor.data?.tailoredPdfName ?? null;
-  const canAnalyze = !!state.selectedResume && !!jobDescription.trim() && phase === 'input';
-  const canTailor = !!analysis && phase === 'analysis';
+  const canAnalyze = !!state.selectedResume && !!jobDescription.trim() && phase === 'input' && state.ollamaReady;
+  const canTailor = !!analysis && phase === 'analysis' && state.ollamaReady;
   const isShowingTailored = phase === 'result' && showTailored;
   const previewFilename = tailoredPdfName
     ? tailoredPdfName
@@ -280,7 +280,7 @@ export default function TailorScreen() {
                         full
                         onClick={handleAnalyze}
                         loading={state.tailor.loading && phase === 'input'}
-                        disabled={!state.selectedResume || !jobDescription.trim()}
+                        disabled={!state.selectedResume || !jobDescription.trim() || !state.ollamaReady}
                       >
                         See How I Fit
                       </Button>
@@ -307,6 +307,7 @@ export default function TailorScreen() {
                         full
                         onClick={handleTailor}
                         loading={state.tailor.loading && phase === 'analysis'}
+                        disabled={!state.ollamaReady}
                       >
                         Generate Tailored Resume
                       </Button>

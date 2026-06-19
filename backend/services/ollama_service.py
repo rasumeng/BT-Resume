@@ -40,6 +40,28 @@ class OllamaService:
         self.ollama_process = None
         self.processing_files: set[str] = set()  # filenames currently being parsed
 
+    # ─── OS-specific Install Help ───
+    @staticmethod
+    def get_install_command() -> str:
+        """Return an OS-specific copy-paste command to install Ollama."""
+        system = platform.system()
+        if system == "Windows":
+            return (
+                "1. Download from https://ollama.com/download/windows\n"
+                "2. Run the installer (OllamaSetup.exe)\n"
+                "3. Restart your terminal, then run 'btr serve' again"
+            )
+        elif system == "Darwin":
+            return (
+                "  brew install ollama\n\n"
+                "Or download from: https://ollama.com/download/mac"
+            )
+        else:
+            return (
+                "  curl -fsSL https://ollama.com/install.sh | sh\n\n"
+                "Or see: https://ollama.com/download/linux"
+            )
+
     # ─── Processing File Tracking ───
     def add_processing(self, filename: str) -> None:
         """Mark a resume file as currently being processed (preparsed)."""
@@ -152,10 +174,8 @@ class OllamaService:
         try:
             ollama_bin = self._find_ollama_on_path()
             if not ollama_bin:
-                logger.error(
-                    "Ollama executable not found. "
-                    "Please install Ollama from https://ollama.com"
-                )
+                logger.error("Ollama executable not found.")
+                logger.error("To install Ollama, run:\n%s", self.get_install_command())
                 return False
 
             logger.info(f"Starting Ollama from {ollama_bin}")

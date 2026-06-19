@@ -57,7 +57,7 @@ export default function PolishScreen() {
   const changes = state.polish.data?.changes ?? [];
   const polishedPdfName = state.polish.data?.polishedPdfName ?? null;
   const currentStep = getStep(!!state.selectedResume, !!polishedText);
-  const canGenerate = !!state.selectedResume && !polishedText;
+  const canGenerate = !!state.selectedResume && !polishedText && state.ollamaReady;
   const previewFilename = polishedPdfName
     ? polishedPdfName
     : (state.selectedResume?.filename?.toLowerCase().endsWith('.pdf')
@@ -210,7 +210,7 @@ export default function PolishScreen() {
                         full
                         onClick={handlePolish}
                         loading={state.polish.loading}
-                        disabled={!state.selectedResume}
+                        disabled={!state.selectedResume || !state.ollamaReady}
                       >
                         Polish Resume
                       </Button>

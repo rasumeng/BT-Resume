@@ -130,7 +130,7 @@ export default function MyResumesScreen() {
                   full
                   onClick={handleGrade}
                   loading={grading}
-                  disabled={!state.selectedResume || state.selectedResume.processing || uploadLoading}
+                  disabled={!state.selectedResume || state.selectedResume.processing || uploadLoading || !state.ollamaReady}
                 >
                   {state.selectedResume?.processing ? 'Processing...' : 'Grade'}
                 </Button>
