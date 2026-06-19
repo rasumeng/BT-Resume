@@ -1,4 +1,4 @@
-import { FileText, Trash2 } from 'lucide-react';
+import { FileText, Trash2, Loader2 } from 'lucide-react';
 import type { ResumeFile } from '../../types';
 
 interface ResumeListProps {
@@ -62,7 +62,14 @@ export default function ResumeList({ resumes, selectedFilename, onSelect, onDele
               </p>
               <div className="flex gap-2 mt-0.5">
                 <span className="text-xs text-text-secondary">{formatDate(resume.last_modified)}</span>
-                <span className="text-xs text-text-secondary">{resume.file_size}</span>
+                {resume.processing ? (
+                  <span className="text-xs text-gold flex items-center gap-1">
+                    <Loader2 size={10} className="animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  <span className="text-xs text-text-secondary">{resume.file_size}</span>
+                )}
               </div>
             </div>
 

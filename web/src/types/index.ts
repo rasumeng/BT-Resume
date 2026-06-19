@@ -8,6 +8,7 @@ export interface ResumeFile {
   filename: string;
   last_modified: string;
   file_size: string;
+  processing?: boolean;
 }
 
 export interface GradeCategory {

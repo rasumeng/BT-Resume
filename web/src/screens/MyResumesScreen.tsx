@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { BarChart3, Check, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useApp } from '../app/AppContext';
 import * as aiApi from '../services/aiApi';
@@ -19,7 +19,7 @@ import NotificationToast from '../components/shared/NotificationToast';
 import ConfirmDialog from '../components/shared/ConfirmDialog';
 
 export default function MyResumesScreen() {
-  const { state, selectResume, deleteResume, uploadResume, dispatch } = useApp();
+  const { state, selectResume, deleteResume, uploadResume, loadResumes, dispatch } = useApp();
   const [uploadLoading, setUploadLoading] = useState(false);
   const [grading, setGrading] = useState(false);
   const [notif, setNotif] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
@@ -78,6 +78,16 @@ export default function MyResumesScreen() {
     setDeleteTarget(null);
   }, [deleteTarget, deleteResume]);
 
+  // Poll for processing state changes so Grade button re-enables once parsing completes
+  useEffect(() => {
+    const hasProcessing = state.resumes.some((r) => r.processing);
+    if (!hasProcessing) return;
+    const interval = setInterval(() => {
+      loadResumes();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [state.resumes, loadResumes]);
+
   return (
     <>
       <SplitPanel
@@ -120,9 +130,9 @@ export default function MyResumesScreen() {
                   full
                   onClick={handleGrade}
                   loading={grading}
-                  disabled={!state.selectedResume}
+                  disabled={!state.selectedResume || state.selectedResume.processing || uploadLoading}
                 >
-                  Grade
+                  {state.selectedResume?.processing ? 'Processing...' : 'Grade'}
                 </Button>
               </div>
             </Card>

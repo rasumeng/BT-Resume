@@ -15,6 +15,8 @@ interface AppHeaderProps {
   onTabChange: (tab: Tab) => void;
   backendStatus: string;
   backendMessage: string;
+  ollamaReady: boolean;
+  ollamaModel: string;
 }
 
 export default function AppHeader({
@@ -22,6 +24,8 @@ export default function AppHeader({
   onTabChange,
   backendStatus,
   backendMessage,
+  ollamaReady,
+  ollamaModel,
 }: AppHeaderProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -90,7 +94,15 @@ export default function AppHeader({
           })}
         </nav>
 
-        <div>{statusDot}</div>
+        <div className="flex items-center gap-3">
+          {/* Ollama model status */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-active/60" title={ollamaReady ? `${ollamaModel} is ready` : 'Model not connected'}>
+            <span className={`w-1.5 h-1.5 rounded-full ${ollamaReady ? 'bg-success' : 'bg-error'}`} />
+            <span className="text-[10px] font-medium text-text-secondary">{ollamaModel}</span>
+          </div>
+          {/* Backend status dot */}
+          <div>{statusDot}</div>
+        </div>
       </div>
     </header>
   );

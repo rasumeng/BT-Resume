@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 from backend.services.file_service import FileService
 from backend.services.llm import LLMService
 from backend.services.feedback_service import FeedbackService
+from backend.services.ollama_service import get_ollama_service
 
 # Create blueprint
 resume_bp = Blueprint('resume', __name__)
@@ -24,8 +25,13 @@ resume_bp = Blueprint('resume', __name__)
 
 @resume_bp.route('/list-resumes', methods=['GET'])
 def list_resumes():
-    """List all resumes in the folder."""
+    """List all resumes in the folder with processing status."""
     result = FileService.list_resumes()
+    if result.get('success') and 'resumes' in result:
+        ollama_service = get_ollama_service()
+        for resume in result['resumes']:
+            filename = resume.get('filename', '')
+            resume['processing'] = ollama_service.is_processing(filename)
     status_code = 200 if result.get('success') else 500
     return jsonify(result), status_code
 
@@ -120,6 +126,10 @@ def upload_resume():
         stored_filename = save_result['filename']
         resume_path = Path(get_resumes_dir()) / stored_filename
 
+        # Register as processing so the frontend can disable grade/preview
+        ollama_service = get_ollama_service()
+        ollama_service.add_processing(stored_filename)
+
         def process_uploaded_resume():
             try:
                 extracted = FileService.extract_resume_text(stored_filename)
@@ -140,6 +150,9 @@ def upload_resume():
                     logger.warning(f"⚠️  Failed to parse uploaded resume: {parse_result.get('error')}")
             except Exception as parse_err:
                 logger.warning(f"⚠️  Failed to parse/cache uploaded resume: {parse_err}")
+            finally:
+                # Unregister processing regardless of outcome
+                ollama_service.remove_processing(stored_filename)
 
         threading.Thread(target=process_uploaded_resume, daemon=True).start()
 

@@ -26,6 +26,7 @@ const HEALTH_POLL_INTERVAL = 3000;
 const MAX_FAILS_BEFORE_ERROR = 4;
 const BACKEND_READY_TIMEOUT_MS = 15000;
 const BACKEND_READY_POLL_MS = 500;
+const OLLAMA_STATUS_POLL_MS = 10000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -40,6 +41,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (health.status === 'healthy') {
         failCountRef.current = 0;
         dispatch({ type: 'SET_BACKEND_STATUS', status: 'ready', message: '' });
+        dispatch({ type: 'SET_OLLAMA_STATUS', ready: health.llm_ready ?? false });
         return true;
       }
       return false;
@@ -144,6 +146,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (healthIntervalRef.current) clearInterval(healthIntervalRef.current);
     };
   }, [checkHealth, loadResumes]);
+
+  // Periodically refresh ollama status once the app is in home phase
+  useEffect(() => {
+    if (state.phase !== 'home') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const health = await api.health();
+        dispatch({ type: 'SET_OLLAMA_STATUS', ready: health.llm_ready ?? false });
+      } catch {
+        // Backend might be temporarily unreachable; keep current status
+      }
+    }, OLLAMA_STATUS_POLL_MS);
+
+    return () => clearInterval(interval);
+  }, [state.phase]);
 
   const value: AppContextValue = {
     state,

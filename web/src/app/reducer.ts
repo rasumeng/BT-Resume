@@ -4,6 +4,8 @@ export interface AppState {
   phase: AppPhase;
   backendStatus: BackendStatus;
   backendMessage: string;
+  ollamaReady: boolean;
+  ollamaModel: string;
   resumes: ResumeFile[];
   selectedResume: ResumeFile | null;
   selectedResumeContent: string | null;
@@ -23,6 +25,7 @@ export type Action =
   | { type: 'SET_GRADE_STATE'; state: AsyncState<GradeResult> }
   | { type: 'SET_POLISH_STATE'; state: AsyncState<PolishResult> }
   | { type: 'SET_TAILOR_STATE'; state: AsyncState<AnalysisData> }
+  | { type: 'SET_OLLAMA_STATUS'; ready: boolean; model?: string }
   | { type: 'ADD_RESUME'; resume: ResumeFile }
   | { type: 'REMOVE_RESUME'; filename: string }
   | { type: 'SET_ERROR'; error: string };
@@ -31,6 +34,8 @@ export const initialState: AppState = {
   phase: 'setup',
   backendStatus: 'disconnected',
   backendMessage: '',
+  ollamaReady: false,
+  ollamaModel: 'mistral:7b',
   resumes: [],
   selectedResume: null,
   selectedResumeContent: null,
@@ -75,6 +80,13 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_TAILOR_STATE':
       return { ...state, tailor: action.state };
+
+    case 'SET_OLLAMA_STATUS':
+      return {
+        ...state,
+        ollamaReady: action.ready,
+        ollamaModel: action.model ?? state.ollamaModel,
+      };
 
     case 'ADD_RESUME':
       return { ...state, resumes: [...state.resumes, action.resume] };

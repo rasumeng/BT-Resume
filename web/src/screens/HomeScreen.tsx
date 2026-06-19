@@ -22,6 +22,8 @@ export default function HomeScreen() {
         onTabChange={handleTabChange}
         backendStatus={state.backendStatus}
         backendMessage={state.backendMessage}
+        ollamaReady={state.ollamaReady}
+        ollamaModel={state.ollamaModel}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

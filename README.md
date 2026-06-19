@@ -24,7 +24,7 @@ btr serve
 
 That's it. Your browser opens to `http://localhost:5000` with the BT Resume web UI.
 
-> **First run:** `btr serve` will automatically prompt you to install Ollama and download the Mistral 7B model (~700MB). Just follow the on-screen instructions.
+> **First run:** `btr serve` will automatically attempt to start Ollama and download the Mistral 7B model (~4.1GB). If Ollama is not installed, you'll be prompted to install it from [ollama.com](https://ollama.com).
 
 ---
 

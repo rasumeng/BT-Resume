@@ -9,6 +9,7 @@ import time
 import subprocess
 import platform
 import os
+import shutil
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,20 @@ class OllamaService:
         self.api_endpoint = f"{host}/api"
         self.is_ready = False
         self.ollama_process = None
+        self.processing_files: set[str] = set()  # filenames currently being parsed
+
+    # ─── Processing File Tracking ───
+    def add_processing(self, filename: str) -> None:
+        """Mark a resume file as currently being processed (preparsed)."""
+        self.processing_files.add(filename)
+
+    def remove_processing(self, filename: str) -> None:
+        """Mark a resume file as done processing."""
+        self.processing_files.discard(filename)
+
+    def is_processing(self, filename: str) -> bool:
+        """Check if a resume file is currently being processed."""
+        return filename in self.processing_files
 
     # ─── Startup & Initialization ───
     def startup(self) -> bool:
@@ -82,6 +97,42 @@ class OllamaService:
             logger.error(traceback.format_exc())
             return False
 
+    def _find_ollama_on_path(self) -> str | None:
+        """Find Ollama executable anywhere on the system PATH or common install locations."""
+        # 1. Try shutil.which (searches PATH)
+        exe = shutil.which("ollama")
+        if exe:
+            return exe
+
+        # 2. Platform-specific fallback locations
+        system = platform.system()
+        if system == "Windows":
+            known_paths = [
+                r"%LOCALAPPDATA%\Programs\Ollama\ollama.exe",
+                r"%LOCALAPPDATA%\Ollama\ollama.exe",
+                r"%USERPROFILE%\AppData\Local\Programs\Ollama\ollama.exe",
+                r"C:\Program Files\Ollama\ollama.exe",
+                r"C:\Program Files (x86)\Ollama\ollama.exe",
+            ]
+        elif system == "Darwin":
+            known_paths = [
+                "/usr/local/bin/ollama",
+                "/opt/homebrew/bin/ollama",
+                "/Applications/Ollama.app/Contents/Resources/ollama",
+            ]
+        else:
+            known_paths = [
+                "/usr/bin/ollama",
+                "/usr/local/bin/ollama",
+            ]
+
+        for path in known_paths:
+            expanded = os.path.expandvars(path)
+            if os.path.exists(expanded):
+                return expanded
+
+        return None
+
     def _ensure_ollama_running(self) -> bool:
         """
         Check if Ollama is running. If not, attempt to start it.
@@ -99,49 +150,28 @@ class OllamaService:
         logger.info("Ollama not running - attempting to start...")
 
         try:
-            # Platform-specific startup
-            system = platform.system()
-
-            if system == "Windows":
-                # Try to start Ollama on Windows
-                # Look for Ollama in common installation paths
-                ollama_paths = [
-                    r"C:\Users\%USERNAME%\AppData\Local\Programs\Ollama\ollama.exe",
-                    r"C:\Program Files\Ollama\ollama.exe",
-                ]
-
-                for path in ollama_paths:
-                    expanded_path = os.path.expandvars(path)
-                    if os.path.exists(expanded_path):
-                        logger.info(f"Starting Ollama from {expanded_path}")
-                        subprocess.Popen(
-                            [expanded_path, "serve"],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                        )
-                        # Wait for startup
-                        time.sleep(5)
-                        if self._ping_ollama():
-                            logger.info("[OK] Ollama started successfully")
-                            return True
-                        break
-
-            elif system in ["Darwin", "Linux"]:
-                # macOS or Linux
-                subprocess.Popen(
-                    ["ollama", "serve"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+            ollama_bin = self._find_ollama_on_path()
+            if not ollama_bin:
+                logger.error(
+                    "Ollama executable not found. "
+                    "Please install Ollama from https://ollama.com"
                 )
-                time.sleep(5)
+                return False
+
+            logger.info(f"Starting Ollama from {ollama_bin}")
+            subprocess.Popen(
+                [ollama_bin, "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # Wait for startup (retry with backoff)
+            for attempt in range(6):
+                time.sleep(2 if attempt < 3 else 5)
                 if self._ping_ollama():
                     logger.info("[OK] Ollama started successfully")
                     return True
 
-            logger.error(
-                "Could not start Ollama. Please ensure Ollama is installed "
-                "and running: https://ollama.ai"
-            )
+            logger.error("Ollama process launched but not responding on API")
             return False
 
         except Exception as e:
@@ -360,6 +390,7 @@ class OllamaService:
             "model": self.model,
             "host": self.host,
             "health": self._ping_ollama(),
+            "processing_files": list(self.processing_files),
         }
 
 
@@ -371,7 +402,6 @@ def get_ollama_service() -> OllamaService:
     """Get the global Ollama service instance."""
     global _ollama_service
     if _ollama_service is None:
-        logger.warning("[WARN] Creating NEW Ollama service instance (this should only happen once at startup)")
+        logger.info("[OLLAMA] Creating Ollama service instance")
         _ollama_service = OllamaService()
-    logger.warning(f"[WARN] get_ollama_service() returning instance {id(_ollama_service)} - is_ready={_ollama_service.is_ready}, model={_ollama_service.model if hasattr(_ollama_service, 'model') else 'N/A'}")
     return _ollama_service

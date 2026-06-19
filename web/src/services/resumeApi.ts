@@ -20,6 +20,7 @@ function normalizeResume(item: unknown): ResumeFile {
     filename: r.filename ?? r.name ?? 'Unknown.pdf',
     last_modified: modified,
     file_size: fileSize,
+    processing: r.processing ?? false,
   };
 }
 
