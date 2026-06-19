@@ -3,6 +3,7 @@ Ollama Service - Manages local LLM model lifecycle and interactions.
 Handles model initialization, pulling, health checks, and inference.
 """
 
+import json
 import requests
 import logging
 import time
@@ -18,7 +19,8 @@ logger = logging.getLogger(__name__)
 OLLAMA_HOST = "http://localhost:11434"
 OLLAMA_API_ENDPOINT = f"{OLLAMA_HOST}/api"
 PRIMARY_MODEL = "mistral:7b"
-MODEL_TIMEOUT = 300  # 5 minutes to pull/load model
+MODEL_TIMEOUT = 300  # 5 minutes for inference requests
+MODEL_PULL_TIMEOUT = 1800  # 30 minutes to download the model
 HEALTH_CHECK_TIMEOUT = 30  # 30 seconds for health checks
 
 
@@ -283,33 +285,86 @@ class OllamaService:
 
     def _pull_model(self) -> bool:
         """
-        Pull (download) the model from Ollama registry.
+        Pull (download) the model from Ollama registry with progress feedback.
 
         Returns:
             True if pull successful, False otherwise
         """
+        import sys as _sys
+
         try:
-            logger.info(f"Starting model pull: {self.model}")
+            msg = f"Downloading model '{self.model}' (~4.1 GB)..."
+            logger.info(msg)
+            print(f"\n  {msg}", flush=True)
+
             response = requests.post(
                 f"{self.api_endpoint}/pull",
                 json={"name": self.model},
-                timeout=MODEL_TIMEOUT,
-                stream=False,
+                stream=True,
+                timeout=(10, MODEL_PULL_TIMEOUT),
             )
 
-            if response.status_code == 200:
-                logger.info(f"[OK] Model {self.model} pulled successfully")
-                return True
-            else:
+            if response.status_code != 200:
                 logger.error(f"Pull failed with status {response.status_code}")
-                logger.error(f"Response: {response.text}")
+                print(f"  [ERR] Pull failed (HTTP {response.status_code})")
                 return False
 
+            last_pct = -1
+
+            for line in response.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    status = data.get("status", "")
+
+                    if status == "downloading" and data.get("total", 0) > 0:
+                        completed = data.get("completed", 0)
+                        total = data["total"]
+                        pct = int(completed * 100 / total)
+                        if pct > last_pct:
+                            last_pct = pct
+                            mb_done = completed // 1024 // 1024
+                            mb_total = total // 1024 // 1024
+                            print(
+                                f"\r  Downloading: {pct}% ({mb_done} MB / {mb_total} MB)",
+                                end="",
+                                flush=True,
+                            )
+                    elif status == "pulling manifest":
+                        print(f"\r  Pulling manifest...", end="", flush=True)
+                    elif status == "verifying sha256 digest":
+                        print(f"\r  Verifying integrity...", end="", flush=True)
+                    elif status == "writing manifest":
+                        print(f"\r  Writing model metadata...", end="", flush=True)
+                    elif status == "success":
+                        print(
+                            f"\r  [OK] Model '{self.model}' downloaded successfully!            ",
+                            flush=True,
+                        )
+                        logger.info(f"Model {self.model} pulled successfully")
+                        return True
+
+                except json.JSONDecodeError:
+                    continue
+
+            print(f"\r  [ERR] Download ended without success confirmation          ", flush=True)
+            logger.error("Model pull ended without success confirmation")
+            return False
+
         except requests.Timeout:
-            logger.error(f"Model pull timeout (>{MODEL_TIMEOUT}s) - model too large?")
+            logger.error("Model pull timed out (>30 minutes)")
+            print(f"\n  [ERR] Download timed out (30 minutes). Check your connection and try again.")
+            return False
+        except KeyboardInterrupt:
+            logger.warning("Model pull cancelled by user")
+            print(f"\n  [WARN] Download cancelled.")
             return False
         except Exception as e:
             logger.error(f"Error pulling model: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            print(f"\n  [ERR] Download failed: {e}")
             return False
 
     def _test_inference(self) -> bool:
